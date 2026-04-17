@@ -1,54 +1,80 @@
 package com.syos.protocol;
 
 import java.io.Serializable;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Immutable, serializable response sent from the server back to a client.
+ * Immutable, serializable server response to a {@link Request}.
  *
- * <p>Use the static factory methods {@link #ok()}, {@link #ok(Map)}, and {@link #error(String)}
- * to construct instances.
+ * <p>On success, {@link #getPayload()} contains the result object (a typed DTO, a list of DTOs,
+ * or {@code null} for commands that return no data). On failure, {@link #getErrorMessage()}
+ * describes the problem and {@link #getPayload()} is {@code null}.
  */
 public final class Response implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
   private final boolean success;
-  private final Map<String, Object> data;
-  private final String errorMessage;
+  private final Object  payload;
+  private final String  errorMessage;
 
-  private Response(boolean success, Map<String, Object> data, String errorMessage) {
-    this.success = success;
-    this.data = data == null ? Collections.emptyMap() : Collections.unmodifiableMap(new HashMap<>(data));
+  // ── Constructor ──────────────────────────────────────────────────────────
+
+  private Response(boolean success, Object payload, String errorMessage) {
+    this.success      = success;
+    this.payload      = payload;
     this.errorMessage = errorMessage;
   }
 
-  /** Successful response with no data payload. */
-  public static Response ok() {
-    return new Response(true, Collections.emptyMap(), null);
+  // ── Static factories ─────────────────────────────────────────────────────
+
+  /**
+   * Success response with a result payload.
+   *
+   * @param payload result object (typed DTO, list, or {@code null})
+   */
+  public static Response success(Object payload) {
+    return new Response(true, payload, null);
   }
 
-  /** Successful response carrying result data. */
-  public static Response ok(Map<String, Object> data) {
-    return new Response(true, data, null);
+  /** Success response with no payload (fire-and-forget commands). */
+  public static Response success() {
+    return new Response(true, null, null);
   }
 
-  /** Failed response with a human-readable error description. */
+  /**
+   * Failure response.
+   *
+   * @param message human-readable description of the error
+   */
   public static Response error(String message) {
-    return new Response(false, Collections.emptyMap(), message);
+    return new Response(false, null, message);
   }
 
+  // ── Accessors ────────────────────────────────────────────────────────────
+
+  /** Returns {@code true} if the command completed without errors. */
   public boolean isSuccess() {
     return success;
   }
 
-  /** Returns a defensive copy of the response data map. */
-  public Map<String, Object> getData() {
-    return new HashMap<>(data);
+  /**
+   * Returns the result payload, or {@code null} if the response is an error or carries no data.
+   *
+   * <p>Cast to the expected DTO type after checking {@link #isSuccess()}:
+   * <pre>{@code
+   *   if (response.isSuccess()) {
+   *     List<ItemDto> items = (List<ItemDto>) response.getPayload();
+   *   }
+   * }</pre>
+   */
+  public Object getPayload() {
+    return payload;
   }
 
+  /**
+   * Returns a human-readable error description when {@link #isSuccess()} is {@code false},
+   * or {@code null} on success.
+   */
   public String getErrorMessage() {
     return errorMessage;
   }
@@ -56,7 +82,7 @@ public final class Response implements Serializable {
   @Override
   public String toString() {
     return success
-        ? "Response{success=true, data=" + data + "}"
+        ? "Response{success=true, payload=" + payload + "}"
         : "Response{success=false, error='" + errorMessage + "'}";
   }
 }
