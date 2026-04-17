@@ -1,0 +1,37 @@
+# Maven build output
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.code-workspace
+.classpath
+.project
+.settings/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / credentials
+*.env
+.env
+
+# Logs
+*.log
+logs/
+
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
