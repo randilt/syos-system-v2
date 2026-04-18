@@ -7,87 +7,235 @@ import com.syos.ui.panels.ReportsPanel;
 import com.syos.ui.panels.StockManagementPanel;
 import com.syos.ui.panels.UserRegistrationPanel;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JTabbedPane;
+import javax.swing.JPanel;
+import javax.swing.Timer;
 
 /**
  * Main application window.
  *
- * <p>Creates a {@link ServerConnection}, connects to the server, then builds a tabbed UI
- * containing all functional panels. Closes the connection when the window is closed.
+ * <p>Layout:
+ * <ul>
+ *   <li>NORTH: top bar with title, clock, and connection status indicator</li>
+ *   <li>WEST: dark-navy sidebar with 5 navigation buttons</li>
+ *   <li>CENTER: {@link CardLayout} content area with all functional panels</li>
+ * </ul>
+ *
+ * <p>Connection failures show a warning in the status bar but do not exit; the user
+ * can try to reconnect via the sidebar. All panels gracefully show inline errors when
+ * the connection is absent.
  */
 public class MainWindow extends JFrame {
 
+  // ── Colours ───────────────────────────────────────────────────────────────
+  private static final Color SIDEBAR_BG     = new Color(0x1a2744);
+  private static final Color SIDEBAR_HOVER  = new Color(0x2e3f6e);
+  private static final Color SIDEBAR_ACTIVE = new Color(0x2ecc71);
+  private static final Color TOPBAR_BG      = new Color(0x1a2744);
+  private static final Color CONTENT_BG     = Color.WHITE;
+  private static final Color DOT_OK         = new Color(0x2ecc71);
+  private static final Color DOT_ERR        = new Color(0xe74c3c);
+
+  // ── Fonts ─────────────────────────────────────────────────────────────────
+  private static final Font SIDEBAR_FONT = new Font("Segoe UI", Font.PLAIN, 13);
+  private static final Font TOPBAR_FONT  = new Font("Segoe UI", Font.BOLD, 16);
+  private static final Font CLOCK_FONT   = new Font("Segoe UI", Font.PLAIN, 12);
+
+  // ── Navigation items: label → CardLayout key ─────────────────────────────
+  private static final String[][] NAV_ITEMS = {
+      {"POS Terminal",       "POS"},
+      {"Online Sale",        "ONLINE"},
+      {"Stock Management",   "STOCK"},
+      {"Reports",            "REPORTS"},
+      {"User Registration",  "USERS"},
+  };
+
   private final ServerConnection connection;
+  private final CardLayout        cardLayout   = new CardLayout();
+  private final JPanel            contentArea  = new JPanel(cardLayout);
+
+  private JLabel activeSidebarLabel = null;
+  private JLabel clockLabel;
+  private JLabel connDotLabel;
+  private JLabel connTextLabel;
 
   public MainWindow(String host, int port) {
-    super("SYOS Billing System v2");
-
-    connection = new ServerConnection(host, port);
-    try {
-      connection.connect();
-    } catch (IOException e) {
-      JOptionPane.showMessageDialog(
-          null,
-          "Cannot connect to server at " + host + ":" + port + "\n" + e.getMessage(),
-          "Connection Error",
-          JOptionPane.ERROR_MESSAGE);
-      System.exit(1);
-    }
+    super("SYOS Billing System");
+    this.connection = new ServerConnection(host, port);
 
     buildUi();
 
+    setMinimumSize(new Dimension(1200, 700));
     setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
     addWindowListener(new WindowAdapter() {
-      @Override
-      public void windowClosing(WindowEvent e) {
-        connection.close();
+      @Override public void windowClosing(WindowEvent e) {
+        connection.disconnect();
         dispose();
         System.exit(0);
       }
     });
-
-    setSize(900, 650);
+    pack();
+    setSize(1280, 760);
     setLocationRelativeTo(null);
+
+    // Connect after UI is ready so status can update
+    connectToServer();
+
+    // Live clock — fires every second on EDT
+    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd  HH:mm:ss");
+    Timer clock = new Timer(1_000, e -> clockLabel.setText(LocalDateTime.now().format(fmt)));
+    clock.start();
   }
 
+  // ── Connection ────────────────────────────────────────────────────────────
+
+  private void connectToServer() {
+    setConnectionStatus(false, "Connecting…");
+    new Thread(() -> {
+      boolean ok = connection.connect();
+      javax.swing.SwingUtilities.invokeLater(() ->
+          setConnectionStatus(ok, ok ? "Connected" : "Offline")
+      );
+    }, "syos-connect").start();
+  }
+
+  private void setConnectionStatus(boolean connected, String text) {
+    connDotLabel.putClientProperty("connected", connected);
+    connDotLabel.repaint();
+    connTextLabel.setText(text);
+    connTextLabel.setForeground(connected ? DOT_OK : DOT_ERR);
+  }
+
+  // ── UI Construction ───────────────────────────────────────────────────────
+
   private void buildUi() {
-    setLayout(new BorderLayout());
+    JPanel root = new JPanel(new BorderLayout());
+    root.add(buildTopBar(),  BorderLayout.NORTH);
+    root.add(buildSidebar(), BorderLayout.WEST);
+    root.add(buildContent(), BorderLayout.CENTER);
+    setContentPane(root);
+  }
 
-    // Header banner
-    JLabel header = new JLabel("  SYOS Billing System v2", JLabel.LEFT);
-    header.setFont(new Font("SansSerif", Font.BOLD, 18));
-    header.setOpaque(true);
-    header.setBackground(new Color(0x1565C0));
-    header.setForeground(Color.WHITE);
-    header.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-    add(header, BorderLayout.NORTH);
+  private JPanel buildTopBar() {
+    JPanel bar = new JPanel(new BorderLayout());
+    bar.setBackground(TOPBAR_BG);
+    bar.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 16));
+    bar.setPreferredSize(new Dimension(0, 48));
 
-    // Tabbed pane
-    JTabbedPane tabs = new JTabbedPane();
-    tabs.setFont(new Font("SansSerif", Font.PLAIN, 13));
+    JLabel title = new JLabel("SYOS Billing System");
+    title.setFont(TOPBAR_FONT);
+    title.setForeground(Color.WHITE);
+    bar.add(title, BorderLayout.WEST);
 
-    tabs.addTab("In-Store Sale",     new InStoreSalePanel(connection));
-    tabs.addTab("Online Sale",       new OnlineSalePanel(connection));
-    tabs.addTab("Stock Management",  new StockManagementPanel(connection));
-    tabs.addTab("Reports",           new ReportsPanel(connection));
-    tabs.addTab("Register Customer", new UserRegistrationPanel(connection));
+    // Right side: connection dot + text + spacer + clock
+    JPanel right = new JPanel();
+    right.setLayout(new BoxLayout(right, BoxLayout.X_AXIS));
+    right.setBackground(TOPBAR_BG);
 
-    add(tabs, BorderLayout.CENTER);
+    connDotLabel = new JLabel() {
+      @Override protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        boolean ok = Boolean.TRUE.equals(getClientProperty("connected"));
+        g.setColor(ok ? DOT_OK : DOT_ERR);
+        g.fillOval(2, (getHeight() - 10) / 2, 10, 10);
+      }
+    };
+    connDotLabel.setPreferredSize(new Dimension(16, 16));
+    connDotLabel.setOpaque(false);
+    right.add(connDotLabel);
+    right.add(Box.createHorizontalStrut(6));
 
-    // Status bar
-    JLabel statusBar = new JLabel(
-        "  Connected to server — " + connection.getHost() + ":" + connection.getPort());
-    statusBar.setFont(new Font("SansSerif", Font.ITALIC, 11));
-    statusBar.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8));
-    add(statusBar, BorderLayout.SOUTH);
+    connTextLabel = new JLabel("Connecting…");
+    connTextLabel.setFont(CLOCK_FONT);
+    connTextLabel.setForeground(DOT_ERR);
+    right.add(connTextLabel);
+    right.add(Box.createHorizontalStrut(24));
+
+    clockLabel = new JLabel();
+    clockLabel.setFont(CLOCK_FONT);
+    clockLabel.setForeground(new Color(0xbdc3c7));
+    right.add(clockLabel);
+
+    bar.add(right, BorderLayout.EAST);
+    return bar;
+  }
+
+  private JPanel buildSidebar() {
+    JPanel sidebar = new JPanel();
+    sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+    sidebar.setBackground(SIDEBAR_BG);
+    sidebar.setPreferredSize(new Dimension(210, 0));
+
+    sidebar.add(Box.createVerticalStrut(20));
+
+    for (String[] nav : NAV_ITEMS) {
+      JLabel btn = makeSidebarButton(nav[0], nav[1]);
+      sidebar.add(btn);
+      sidebar.add(Box.createVerticalStrut(2));
+      // Activate first item by default
+      if (activeSidebarLabel == null) {
+        activeSidebarLabel = btn;
+        btn.setBackground(SIDEBAR_ACTIVE);
+      }
+    }
+    sidebar.add(Box.createVerticalGlue());
+    return sidebar;
+  }
+
+  private JLabel makeSidebarButton(String text, String cardKey) {
+    JLabel btn = new JLabel("   " + text);
+    btn.setFont(SIDEBAR_FONT);
+    btn.setForeground(Color.WHITE);
+    btn.setBackground(SIDEBAR_BG);
+    btn.setOpaque(true);
+    btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+    btn.setPreferredSize(new Dimension(210, 44));
+    btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    btn.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+
+    btn.addMouseListener(new MouseAdapter() {
+      @Override public void mouseEntered(MouseEvent e) {
+        if (btn != activeSidebarLabel) btn.setBackground(SIDEBAR_HOVER);
+      }
+      @Override public void mouseExited(MouseEvent e) {
+        if (btn != activeSidebarLabel) btn.setBackground(SIDEBAR_BG);
+      }
+      @Override public void mouseClicked(MouseEvent e) {
+        if (activeSidebarLabel != null) activeSidebarLabel.setBackground(SIDEBAR_BG);
+        activeSidebarLabel = btn;
+        btn.setBackground(SIDEBAR_ACTIVE);
+        cardLayout.show(contentArea, cardKey);
+      }
+    });
+    return btn;
+  }
+
+  private JPanel buildContent() {
+    contentArea.setBackground(CONTENT_BG);
+
+    contentArea.add(new InStoreSalePanel(connection),   "POS");
+    contentArea.add(new OnlineSalePanel(connection),    "ONLINE");
+    contentArea.add(new StockManagementPanel(connection), "STOCK");
+    contentArea.add(new ReportsPanel(connection),       "REPORTS");
+    contentArea.add(new UserRegistrationPanel(connection), "USERS");
+
+    cardLayout.show(contentArea, "POS");
+    return contentArea;
   }
 }

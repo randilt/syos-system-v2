@@ -1,31 +1,47 @@
 package com.syos.ui.panels;
 
 import com.syos.network.ServerConnection;
-import com.syos.protocol.CommandType;
+import com.syos.protocol.BillDto;
+import com.syos.protocol.ItemDto;
 import com.syos.protocol.Request;
 import com.syos.protocol.Response;
 import com.syos.ui.components.BillReceiptPanel;
 import com.syos.ui.components.StyledButton;
 import com.syos.ui.components.StyledTable;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JSplitPane;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.SwingWorker;
+import javax.swing.table.DefaultTableModel;
 
 /**
  * Panel for processing online sales.
  *
- * <p>The operator enters a registered user ID, builds a cart of item code / quantity
- * pairs, then submits the order to the server.
+ * <p>All server calls run on {@link SwingWorker} threads; the EDT is never blocked.
+ * Feedback is shown via inline coloured {@link JLabel}s.
  */
 public class OnlineSalePanel extends JPanel {
+
+  private static final Color BG        = Color.WHITE;
+  private static final Color ERR_COLOR = new Color(0xe74c3c);
+  private static final Color OK_COLOR  = new Color(0x27ae60);
+  private static final Font  LABEL_FONT = new Font("Segoe UI", Font.PLAIN, 13);
+  private static final Font  TOTAL_FONT = new Font("Segoe UI", Font.BOLD, 18);
 
   private final ServerConnection connection;
 
@@ -33,115 +49,265 @@ public class OnlineSalePanel extends JPanel {
   private final JTextField itemCodeField = new JTextField(10);
   private final JTextField qtyField      = new JTextField(5);
 
-  private final StyledTable      cartTable;
-  private final BillReceiptPanel receiptPanel;
+  private final JLabel messageLabel = new JLabel(" ");
+  private final JLabel totalLabel   = new JLabel("Total:  Rs. 0.00");
 
-  private final Map<String, Integer> cart = new LinkedHashMap<>();
+  private final List<Object[]> cartRows = new ArrayList<>();
+  private final StyledTable    cartTable;
+
+  private final Map<String, ItemDto> itemCache = new HashMap<>();
+  private boolean cacheLoaded = false;
+
+  private final BillReceiptPanel receiptPanel = new BillReceiptPanel();
+  private StyledButton processBtn;
 
   public OnlineSalePanel(ServerConnection connection) {
-    this.connection  = connection;
-    this.cartTable   = new StyledTable("Item Code", "Quantity");
-    this.receiptPanel = new BillReceiptPanel();
+    this.connection = connection;
+    this.cartTable  = new StyledTable("Item Code", "Item Name", "Qty", "Unit Price", "Total");
 
     setLayout(new BorderLayout(8, 8));
-    setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    setBackground(BG);
+    setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-    add(buildUserPanel(), BorderLayout.NORTH);
-    add(buildCartArea(),  BorderLayout.CENTER);
-    add(buildButtons(),   BorderLayout.SOUTH);
+    JPanel leftPanel = new JPanel(new BorderLayout(6, 6));
+    leftPanel.setBackground(BG);
+    leftPanel.add(buildNorthArea(),          BorderLayout.NORTH);
+    leftPanel.add(cartTable.getScrollPane(), BorderLayout.CENTER);
+    leftPanel.add(buildSouthArea(),          BorderLayout.SOUTH);
+
+    receiptPanel.setPreferredSize(new Dimension(300, 400));
+
+    JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, receiptPanel);
+    split.setDividerLocation(700);
+    split.setResizeWeight(0.7);
+    split.setBorder(null);
+    add(split, BorderLayout.CENTER);
   }
 
-  private JPanel buildUserPanel() {
-    JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-    panel.setBorder(BorderFactory.createTitledBorder("Customer"));
-    panel.add(new JLabel("User ID:"));
-    panel.add(userIdField);
-    return panel;
+  // ── Layout builders ───────────────────────────────────────────────────────
+
+  private JPanel buildNorthArea() {
+    JPanel north = new JPanel();
+    north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
+    north.setBackground(BG);
+
+    // User ID row
+    JPanel userRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+    userRow.setBackground(BG);
+    userRow.setBorder(BorderFactory.createTitledBorder("Customer"));
+    userRow.add(label("User ID:"));
+    userRow.add(userIdField);
+    north.add(userRow);
+
+    // Cart input row
+    JPanel itemRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+    itemRow.setBackground(BG);
+    itemRow.setBorder(BorderFactory.createTitledBorder("Add Item to Cart"));
+    itemRow.add(label("Item Code:"));
+    itemRow.add(itemCodeField);
+    itemRow.add(label("Qty:"));
+    itemRow.add(qtyField);
+    StyledButton addBtn = StyledButton.primary("Add Item");
+    addBtn.addActionListener(e -> handleAddItem());
+    itemRow.add(addBtn);
+    StyledButton removeBtn = StyledButton.danger("Remove Selected");
+    removeBtn.addActionListener(e -> removeSelected());
+    itemRow.add(removeBtn);
+    north.add(itemRow);
+
+    return north;
   }
 
-  private JPanel buildCartArea() {
-    JPanel outer = new JPanel(new BorderLayout(4, 4));
+  private JPanel buildSouthArea() {
+    JPanel south = new JPanel();
+    south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
+    south.setBackground(BG);
 
-    JPanel inputRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-    inputRow.setBorder(BorderFactory.createTitledBorder("Add Item to Cart"));
-    inputRow.add(new JLabel("Item Code:"));
-    inputRow.add(itemCodeField);
-    inputRow.add(new JLabel("Qty:"));
-    inputRow.add(qtyField);
+    totalLabel.setFont(TOTAL_FONT);
+    totalLabel.setForeground(new Color(0x1a2744));
+    JPanel totalRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
+    totalRow.setBackground(BG);
+    totalRow.add(totalLabel);
+    south.add(totalRow);
 
-    StyledButton addBtn = StyledButton.neutral("Add to Cart");
-    addBtn.addActionListener(e -> addToCart());
-    inputRow.add(addBtn);
-
+    JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+    actionRow.setBackground(BG);
+    processBtn = StyledButton.success("Process Online Sale");
+    processBtn.addActionListener(e -> processSale());
+    actionRow.add(processBtn);
     StyledButton clearBtn = StyledButton.danger("Clear Cart");
     clearBtn.addActionListener(e -> clearCart());
-    inputRow.add(clearBtn);
+    actionRow.add(clearBtn);
+    south.add(actionRow);
 
-    outer.add(inputRow, BorderLayout.NORTH);
-    outer.add(cartTable.getScrollPane(), BorderLayout.CENTER);
-    return outer;
+    messageLabel.setFont(LABEL_FONT);
+    JPanel msgRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 2));
+    msgRow.setBackground(BG);
+    msgRow.add(messageLabel);
+    south.add(msgRow);
+
+    return south;
   }
 
-  private JPanel buildButtons() {
-    JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
-    StyledButton processBtn = StyledButton.success("Process Online Sale");
-    processBtn.addActionListener(e -> processSale());
-    panel.add(processBtn);
-    return panel;
-  }
+  // ── Actions ───────────────────────────────────────────────────────────────
 
-  private void addToCart() {
-    String code = itemCodeField.getText().trim().toUpperCase();
-    if (code.isEmpty()) { showError("Item code cannot be empty."); return; }
-    int qty;
-    try {
-      qty = Integer.parseInt(qtyField.getText().trim());
-      if (qty <= 0) throw new NumberFormatException();
-    } catch (NumberFormatException e) {
-      showError("Quantity must be a positive integer."); return;
+  private void handleAddItem() {
+    String code    = itemCodeField.getText().trim().toUpperCase();
+    String qtyText = qtyField.getText().trim();
+    String err = validateItemInput(code, qtyText);
+    if (err != null) { showError(err); return; }
+    int qty = Integer.parseInt(qtyText);
+
+    if (!cacheLoaded) {
+      loadItemCacheThenAdd(code, qty);
+    } else {
+      addItemToCart(code, qty);
     }
-    cart.merge(code, qty, Integer::sum);
-    refreshCartTable();
-    itemCodeField.setText("");
-    qtyField.setText("");
+  }
+
+  private void loadItemCacheThenAdd(String code, int qty) {
+    new SwingWorker<Response, Void>() {
+      @Override protected Response doInBackground() throws Exception {
+        return connection.sendRequest(Request.getAllItems());
+      }
+      @Override protected void done() {
+        try {
+          Response r = get();
+          if (r.isSuccess() && r.getPayload() instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<ItemDto> items = (List<ItemDto>) r.getPayload();
+            for (ItemDto item : items) itemCache.put(item.getCode(), item);
+            cacheLoaded = true;
+            addItemToCart(code, qty);
+          } else {
+            showError("Failed to load items: " + r.getErrorMessage());
+          }
+        } catch (InterruptedException | ExecutionException ex) {
+          showError("Server error: " + ex.getMessage());
+        }
+      }
+    }.execute();
+  }
+
+  private void addItemToCart(String code, int qty) {
+    ItemDto item = itemCache.get(code);
+    if (item == null) { showError("Item not found: " + code); return; }
+
+    for (Object[] row : cartRows) {
+      if (row[0].equals(code)) {
+        int newQty = (int) row[2] + qty;
+        row[2] = newQty;
+        row[4] = newQty * (double) row[3];
+        refreshTable();
+        clearInputs();
+        showMessage(" ");
+        return;
+      }
+    }
+
+    double lineTotal = qty * item.getUnitPrice();
+    cartRows.add(new Object[]{code, item.getName(), qty, item.getUnitPrice(), lineTotal});
+    refreshTable();
+    clearInputs();
+    showMessage(" ");
+  }
+
+  private void removeSelected() {
+    int row = cartTable.getSelectedRow();
+    if (row < 0) { showError("Select a row to remove."); return; }
+    cartRows.remove(row);
+    refreshTable();
   }
 
   private void clearCart() {
-    cart.clear();
-    refreshCartTable();
+    cartRows.clear();
+    refreshTable();
+    receiptPanel.clear();
+    showMessage(" ");
   }
 
   private void processSale() {
     String userId = userIdField.getText().trim();
-    if (userId.isEmpty()) { showError("User ID is required."); return; }
-    if (cart.isEmpty())   { showError("Cart is empty — add items first."); return; }
+    if (userId.isBlank())     { showError("User ID is required."); return; }
+    if (cartRows.isEmpty())   { showError("Cart is empty — add items first."); return; }
 
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("userId", userId);
-    payload.put("items", new HashMap<>(cart));
-    payload.put("date", LocalDate.now().toString());
+    Map<String, Integer> items = new LinkedHashMap<>();
+    for (Object[] row : cartRows) items.put((String) row[0], (int) row[2]);
 
-    try {
-      Response response = connection.send(new Request(CommandType.PROCESS_ONLINE_SALE, payload));
-      if (response.isSuccess()) {
-        receiptPanel.displayBill(response.getData());
-        JOptionPane.showMessageDialog(this, receiptPanel, "Sale Processed", JOptionPane.PLAIN_MESSAGE);
-        clearCart();
-        userIdField.setText("");
-      } else {
-        showError("Sale failed: " + response.getErrorMessage());
+    Request req = Request.onlineSale(userId, items, LocalDate.now().toString());
+
+    processBtn.setEnabled(false);
+    processBtn.setText("Processing...");
+    showMessage(" ");
+
+    new SwingWorker<Response, Void>() {
+      @Override protected Response doInBackground() throws Exception {
+        return connection.sendRequest(req);
       }
-    } catch (Exception ex) {
-      showError("Connection error: " + ex.getMessage());
+      @Override protected void done() {
+        processBtn.setEnabled(true);
+        processBtn.setText("Process Online Sale");
+        try {
+          Response r = get();
+          if (r.isSuccess()) {
+            receiptPanel.displayBill((BillDto) r.getPayload());
+            showSuccess("Online sale processed successfully!");
+            clearCart();
+            userIdField.setText("");
+          } else {
+            showError(r.getErrorMessage());
+          }
+        } catch (InterruptedException | ExecutionException ex) {
+          showError("Server error: " + ex.getMessage());
+        }
+      }
+    }.execute();
+  }
+
+  // ── Validation (package-private for tests) ────────────────────────────────
+
+  String validateItemInput(String code, String qtyText) {
+    if (code == null || code.isBlank())       return "Item code cannot be empty.";
+    if (qtyText == null || qtyText.isBlank()) return "Quantity cannot be empty.";
+    try {
+      if (Integer.parseInt(qtyText) <= 0)     return "Quantity must be a positive integer.";
+    } catch (NumberFormatException e) {
+      return "Quantity must be a whole number.";
     }
+    return null;
   }
 
-  private void refreshCartTable() {
-    cartTable.clearRows();
-    cart.forEach((code, qty) -> cartTable.addRow(code, qty));
+  String validateUserId(String userId) {
+    if (userId == null || userId.isBlank()) return "User ID is required.";
+    return null;
   }
 
-  private void showError(String msg) {
-    JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+  // ── UI helpers ────────────────────────────────────────────────────────────
+
+  private void refreshTable() {
+    DefaultTableModel model = cartTable.getModel();
+    model.setRowCount(0);
+    double total = 0.0;
+    for (Object[] row : cartRows) {
+      model.addRow(row);
+      total += (double) row[4];
+    }
+    totalLabel.setText(String.format("Total:  Rs. %,.2f", total));
+  }
+
+  private void clearInputs() {
+    itemCodeField.setText("");
+    qtyField.setText("");
+    itemCodeField.requestFocus();
+  }
+
+  private void showError(String msg)   { messageLabel.setForeground(ERR_COLOR); messageLabel.setText(msg); }
+  private void showSuccess(String msg) { messageLabel.setForeground(OK_COLOR);  messageLabel.setText(msg); }
+  private void showMessage(String msg) { messageLabel.setForeground(Color.BLACK); messageLabel.setText(msg); }
+
+  private JLabel label(String text) {
+    JLabel l = new JLabel(text);
+    l.setFont(LABEL_FONT);
+    return l;
   }
 }
