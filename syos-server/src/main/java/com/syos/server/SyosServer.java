@@ -13,39 +13,77 @@ import java.util.logging.Logger;
  *
  * <p>Call {@link #start()} to enter the accept loop. The server runs until the JVM exits or
  * {@link #stop()} is called from another thread.
+ *
+ * <h2>Construction</h2>
+ * <p>Use {@link #SyosServer(int, int, int)} for normal operation; the context is obtained from
+ * {@link ServerApplicationContext#getInstance()} and initialized inside {@link #start()}. For
+ * unit / integration tests, use the package-private
+ * {@link #SyosServer(int, int, int, RequestRouter)} constructor to inject a mock router and
+ * bypass real DB initialization.
  */
 public class SyosServer {
 
   private static final Logger LOGGER = Logger.getLogger(SyosServer.class.getName());
-  private static final int DEFAULT_THREAD_POOL_SIZE = 20;
 
   private final int port;
-  private final RequestRouter router;
   private final ThreadPool threadPool;
+
+  /** Injected router; null when using the public constructor (set lazily in start()). */
+  private RequestRouter router;
+
   private volatile boolean running;
   private ServerSocket serverSocket;
 
-  public SyosServer(int port, ServerApplicationContext context) {
-    this(port, context, DEFAULT_THREAD_POOL_SIZE);
-  }
+  private int connectedClients = 0;
+  private int nextClientId = 0;
 
-  public SyosServer(int port, ServerApplicationContext context, int threadPoolSize) {
-    if (port < 1 || port > 65535) {
-      throw new IllegalArgumentException("Port must be between 1 and 65535");
-    }
-    if (context == null) throw new IllegalArgumentException("Context cannot be null");
-    this.port = port;
-    this.router = context.getRequestRouter();
-    this.threadPool = new ThreadPool(threadPoolSize);
+  // ── Constructors ──────────────────────────────────────────────────────────
+
+  /**
+   * Production constructor. {@link ServerApplicationContext} is initialized inside
+   * {@link #start()}; no DB connection is created here.
+   *
+   * @param port          TCP port to listen on (1–65535)
+   * @param threadPoolSize number of worker threads in the pool
+   * @param queueCapacity  maximum number of tasks that may queue before blocking
+   */
+  public SyosServer(int port, int threadPoolSize, int queueCapacity) {
+    this(port, threadPoolSize, queueCapacity, null);
   }
 
   /**
-   * Binds the server socket and enters the blocking accept loop.
-   * Returns only when {@link #stop()} is called or a fatal error occurs.
+   * Test constructor. Injects a pre-built {@link RequestRouter} so that
+   * {@link ServerApplicationContext} is never touched.
+   */
+  SyosServer(int port, int threadPoolSize, int queueCapacity, RequestRouter router) {
+    if (port < 1 || port > 65535) {
+      throw new IllegalArgumentException("Port must be between 1 and 65535: " + port);
+    }
+    if (threadPoolSize < 1) throw new IllegalArgumentException("threadPoolSize must be >= 1");
+    if (queueCapacity  < 1) throw new IllegalArgumentException("queueCapacity must be >= 1");
+    this.port       = port;
+    this.threadPool = new ThreadPool(threadPoolSize, queueCapacity);
+    this.router     = router; // may be null — resolved in start()
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+  /**
+   * Initializes the application context (if not already done), binds the server socket,
+   * and enters the blocking accept loop.
+   *
+   * <p>Returns only when {@link #stop()} is called or a fatal socket error occurs.
    */
   public void start() {
+    if (router == null) {
+      ServerApplicationContext ctx = ServerApplicationContext.getInstance();
+      ctx.initialize();
+      router = ctx.getRequestRouter();
+    }
+
     running = true;
-    LOGGER.info("SYOS Server starting on port " + port + "...");
+    LOGGER.info("SYOS Server starting on port " + port
+        + " with " + threadPool.getPoolSize() + " threads...");
 
     try (ServerSocket socket = new ServerSocket(port)) {
       this.serverSocket = socket;
@@ -54,7 +92,9 @@ public class SyosServer {
       while (running) {
         try {
           Socket clientSocket = socket.accept();
-          threadPool.submit(new ClientHandler(clientSocket, router));
+          String cid = allocateClientId();
+          incrementConnectedClients();
+          threadPool.submit(wrap(new ClientHandler(clientSocket, router, cid), cid));
         } catch (IOException e) {
           if (running) {
             LOGGER.log(Level.WARNING, "Error accepting connection", e);
@@ -70,7 +110,7 @@ public class SyosServer {
   }
 
   /** Signals the accept loop to stop and closes the server socket. */
-  public void stop() {
+  public synchronized void stop() {
     running = false;
     if (serverSocket != null && !serverSocket.isClosed()) {
       try {
@@ -79,5 +119,42 @@ public class SyosServer {
         LOGGER.log(Level.WARNING, "Error closing server socket", e);
       }
     }
+    threadPool.shutdown();
+  }
+
+  // ── Connected-client tracking ─────────────────────────────────────────────
+
+  private synchronized void incrementConnectedClients() {
+    connectedClients++;
+  }
+
+  private synchronized void decrementConnectedClients() {
+    if (connectedClients > 0) connectedClients--;
+  }
+
+  public synchronized int getConnectedClientCount() {
+    return connectedClients;
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private synchronized String allocateClientId() {
+    return "client-" + (++nextClientId);
+  }
+
+  /**
+   * Wraps a {@link ClientHandler} so that {@link #decrementConnectedClients()} is called when
+   * the handler finishes, regardless of outcome.
+   */
+  private Runnable wrap(ClientHandler handler, String clientId) {
+    return () -> {
+      try {
+        handler.run();
+      } finally {
+        decrementConnectedClients();
+        LOGGER.fine("[" + clientId + "] handler finished; active clients: "
+            + getConnectedClientCount());
+      }
+    };
   }
 }

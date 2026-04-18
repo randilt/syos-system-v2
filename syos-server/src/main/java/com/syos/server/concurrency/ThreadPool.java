@@ -154,6 +154,15 @@ public class ThreadPool {
   }
 
   /**
+   * Returns the number of worker threads in this pool (the value passed to the constructor).
+   *
+   * @return pool size
+   */
+  public int getPoolSize() {
+    return workers.length;
+  }
+
+  /**
    * Returns {@code true} if this pool has been shut down.
    *
    * @return shutdown state
