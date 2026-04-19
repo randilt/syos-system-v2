@@ -194,6 +194,46 @@ class ClientHandlerTest {
     }
   }
 
+  // ── ClassNotFoundException from unknown serialized class ─────────────────
+
+  @Test
+  void run_unknownSerializedClass_sendsErrorAndContinues() throws Exception {
+    try (ServerSocket ss = new ServerSocket(0)) {
+      Socket clientSocket = new Socket("localhost", ss.getLocalPort());
+      Socket serverSocket = ss.accept();
+
+      ClientHandler handler = new ClientHandler(serverSocket, mockRouter, "test-c6");
+      Thread t = new Thread(handler);
+      t.setDaemon(true);
+      t.start();
+
+      // OOS header so handler's OIS can initialise
+      ObjectOutputStream clientOut = new ObjectOutputStream(clientSocket.getOutputStream());
+      clientOut.flush();
+      ObjectInputStream clientIn = new ObjectInputStream(clientSocket.getInputStream());
+
+      // Write a serialized object that is not a Request
+      clientOut.writeObject("not-a-request");
+      clientOut.flush();
+
+      Response resp = (Response) clientIn.readObject();
+      assertFalse(resp.isSuccess());
+      assertEquals("Invalid request format", resp.getErrorMessage());
+
+      // Handler should still accept a valid request after the bad one
+      when(mockRouter.route(any(Request.class))).thenReturn(Response.success("PONG"));
+      clientOut.writeObject(Request.ping());
+      clientOut.flush();
+      clientOut.reset();
+      Response pong = (Response) clientIn.readObject();
+      assertTrue(pong.isSuccess());
+
+      clientSocket.close();
+      t.join(3_000);
+      serverSocket.close();
+    }
+  }
+
   // ── IOException on broken pipe is handled gracefully ─────────────────────
 
   @Test

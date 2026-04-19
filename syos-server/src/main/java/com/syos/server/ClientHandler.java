@@ -56,6 +56,11 @@ public class ClientHandler implements Runnable {
               "[" + Instant.now() + "] [" + clientId + "] Unknown class from " + clientAddress, e);
           sendErrorSilently(out, "Invalid request format");
           continue;
+        } catch (ClassCastException e) {
+          LOGGER.log(Level.WARNING,
+              "[" + Instant.now() + "] [" + clientId + "] Invalid request type from " + clientAddress, e);
+          sendErrorSilently(out, "Invalid request format");
+          continue;
         }
 
         LOGGER.fine("[" + Instant.now() + "] [" + clientId + "] Received "

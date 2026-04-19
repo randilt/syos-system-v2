@@ -17,8 +17,8 @@ public final class DatabaseManager {
         getEnvOrDefault(
             "SYOS_DB_URL",
             "jdbc:mysql://localhost:3306/syos_billing?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"));
-    config.setUsername(getEnvOrDefault("SYOS_DB_USER", "root"));
-    config.setPassword(getEnvOrDefault("SYOS_DB_PASSWORD", "root"));
+    config.setUsername(getEnvOrDefault("SYOS_DB_USER", "syos"));
+    config.setPassword(getEnvOrDefault("SYOS_DB_PASSWORD", "syos"));
     config.setMaximumPoolSize(10);
     config.setMinimumIdle(2);
     config.setPoolName("SyosBillingPool");

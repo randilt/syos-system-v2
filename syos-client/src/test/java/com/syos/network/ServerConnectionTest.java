@@ -97,6 +97,29 @@ class ServerConnectionTest {
     assertFalse(client.isConnected());
   }
 
+  @Test
+  void connect_retriesUntilServerAvailable() throws Exception {
+    int port = freePort;
+    serverSocket.close(); // no listener yet
+
+    Thread lateServer = new Thread(() -> {
+      try (ServerSocket ss = new ServerSocket(port)) {
+        try (Socket s = ss.accept()) {
+          new ObjectOutputStream(s.getOutputStream()).flush();
+          s.getInputStream().read();
+        }
+      } catch (IOException ignored) {}
+    });
+    lateServer.setDaemon(true);
+    lateServer.start();
+
+    ServerConnection client = new ServerConnection("localhost", port);
+    assertTrue(client.connect(), "Should succeed after retry when server starts");
+    assertTrue(client.isConnected());
+    client.disconnect();
+    lateServer.join(5_000);
+  }
+
   // ── sendRequest() ─────────────────────────────────────────────────────────
 
   @Test

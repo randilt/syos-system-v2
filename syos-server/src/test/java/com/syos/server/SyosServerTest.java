@@ -24,14 +24,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Integration tests for {@link SyosServer}.
+ * Tests for {@link SyosServer} — start/stop, PING end-to-end, concurrent clients.
  *
  * <p>Uses the package-private {@code SyosServer(int, int, int, RequestRouter)} constructor to
  * inject a Mockito-mocked {@link RequestRouter}, so no real database connection is needed.
  */
 @ExtendWith(MockitoExtension.class)
 @Timeout(10) // every test must complete within 10 seconds
-class ServerIntegrationTest {
+class SyosServerTest {
 
   @Mock RequestRouter mockRouter;
 
