@@ -15,10 +15,15 @@
   <description>Standalone concurrent test clients for stress-testing the server</description>
 
   <dependencies>
-    <!-- Protocol only — test clients communicate via socket like real clients -->
+    <!-- Protocol: Request/Response/DTOs -->
     <dependency>
       <groupId>com.syos</groupId>
       <artifactId>syos-protocol</artifactId>
+    </dependency>
+    <!-- Client: ServerConnection -->
+    <dependency>
+      <groupId>com.syos</groupId>
+      <artifactId>syos-client</artifactId>
     </dependency>
   </dependencies>
 

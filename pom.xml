@@ -35,6 +35,13 @@
         <version>${project.version}</version>
       </dependency>
 
+      <!-- Internal client module -->
+      <dependency>
+        <groupId>com.syos</groupId>
+        <artifactId>syos-client</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
       <!-- Database -->
       <dependency>
         <groupId>mysql</groupId>
