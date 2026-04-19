@@ -13,4 +13,12 @@
   <artifactId>syos-protocol</artifactId>
   <name>SYOS Protocol</name>
   <description>Shared request/response protocol objects transferred between client and server</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>
