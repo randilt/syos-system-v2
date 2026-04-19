@@ -3,6 +3,7 @@ package com.syos.ui.panels;
 import com.syos.network.ServerConnection;
 import com.syos.protocol.Request;
 import com.syos.protocol.Response;
+import com.syos.ui.UiTheme;
 import com.syos.ui.components.StyledButton;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -26,7 +27,7 @@ import javax.swing.SwingWorker;
  */
 public class UserRegistrationPanel extends JPanel {
 
-  private static final Color BG        = Color.WHITE;
+  private static final Color BG        = UiTheme.PANEL_BG;
   private static final Color ERR_COLOR = new Color(0xe74c3c);
   private static final Color OK_COLOR  = new Color(0x27ae60);
   private static final Font  LABEL_FONT = new Font("Segoe UI", Font.PLAIN, 13);
@@ -41,6 +42,8 @@ public class UserRegistrationPanel extends JPanel {
 
   public UserRegistrationPanel(ServerConnection connection) {
     this.connection = connection;
+    UiTheme.styleTextFields(usernameField, emailField);
+    UiTheme.styleLabel(msgLabel);
 
     setLayout(new BorderLayout());
     setBackground(BG);
@@ -56,7 +59,7 @@ public class UserRegistrationPanel extends JPanel {
     // Title
     JLabel title = new JLabel("Register New Customer");
     title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-    title.setForeground(new Color(0x1a2744));
+    title.setForeground(UiTheme.TEXT_PRIMARY);
     gc.gridx = 0; gc.gridy = 0; gc.gridwidth = 2;
     form.add(title, gc);
 
@@ -129,9 +132,7 @@ public class UserRegistrationPanel extends JPanel {
 
   private void addRow(JPanel panel, GridBagConstraints gc, int row, String text, JTextField field) {
     gc.gridx = 0; gc.gridy = row; gc.gridwidth = 1; gc.weightx = 0; gc.fill = GridBagConstraints.NONE;
-    JLabel lbl = new JLabel(text);
-    lbl.setFont(LABEL_FONT);
-    panel.add(lbl, gc);
+    panel.add(UiTheme.label(text), gc);
     gc.gridx = 1; gc.weightx = 1; gc.fill = GridBagConstraints.HORIZONTAL;
     panel.add(field, gc);
   }

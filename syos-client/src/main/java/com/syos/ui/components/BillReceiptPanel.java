@@ -2,6 +2,8 @@ package com.syos.ui.components;
 
 import com.syos.protocol.BillDto;
 import com.syos.protocol.BillItemDto;
+import com.syos.ui.UiTheme;
+import com.syos.ui.components.StyledButton;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
@@ -11,7 +13,6 @@ import java.awt.print.PrinterJob;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -33,20 +34,21 @@ public class BillReceiptPanel extends JPanel {
 
   public BillReceiptPanel() {
     setLayout(new BorderLayout(4, 4));
-    setBorder(BorderFactory.createTitledBorder("Bill Receipt"));
-    setBackground(Color.WHITE);
+    setBorder(UiTheme.titledBorder("Bill Receipt"));
+    setBackground(UiTheme.PANEL_BG);
 
     receiptArea = new JTextArea(20, 38);
     receiptArea.setEditable(false);
-    receiptArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-    receiptArea.setBackground(new Color(0xFAFAFA));
     receiptArea.setText("No sale processed yet.");
-    add(new JScrollPane(receiptArea), BorderLayout.CENTER);
+    UiTheme.styleTextArea(receiptArea);
+    JScrollPane scroll = new JScrollPane(receiptArea);
+    UiTheme.styleScrollPane(scroll);
+    add(scroll, BorderLayout.CENTER);
 
-    JButton printBtn = new JButton("Print Receipt");
-    printBtn.setFont(new Font("SansSerif", Font.PLAIN, 12));
+    StyledButton printBtn = StyledButton.neutral("Print Receipt");
     printBtn.addActionListener(e -> printReceipt());
     JPanel south = new JPanel();
+    south.setBackground(UiTheme.PANEL_BG);
     south.setLayout(new BoxLayout(south, BoxLayout.X_AXIS));
     south.setBackground(Color.WHITE);
     south.add(Box.createHorizontalGlue());

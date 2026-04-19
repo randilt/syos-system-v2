@@ -1,7 +1,6 @@
 package com.syos.ui.components;
 
-import java.awt.Color;
-import java.awt.Font;
+import com.syos.ui.UiTheme;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
@@ -27,27 +26,20 @@ public class StyledTable extends JTable {
     model = new DefaultTableModel(columns, 0) {
       @Override
       public boolean isCellEditable(int row, int col) {
-        return false; // table is display-only
+        return false;
       }
     };
     setModel(model);
     applyStyle();
     scrollPane = new JScrollPane(this);
+    UiTheme.styleScrollPane(scrollPane);
   }
 
   private void applyStyle() {
-    setFont(new Font("SansSerif", Font.PLAIN, 13));
-    setRowHeight(24);
-    setGridColor(new Color(0xE0E0E0));
     setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-
-    getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
-    getTableHeader().setBackground(new Color(0x1976D2));
-    getTableHeader().setForeground(Color.WHITE);
-    getTableHeader().setReorderingAllowed(false);
-
     setFillsViewportHeight(true);
+    UiTheme.styleTable(this);
   }
 
   /** Returns the scroll pane that wraps this table. Add this to panels, not the table itself. */

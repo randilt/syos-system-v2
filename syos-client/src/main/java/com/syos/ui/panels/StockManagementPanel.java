@@ -3,6 +3,7 @@ package com.syos.ui.panels;
 import com.syos.network.ServerConnection;
 import com.syos.protocol.Request;
 import com.syos.protocol.Response;
+import com.syos.ui.UiTheme;
 import com.syos.ui.components.StyledButton;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -37,11 +38,9 @@ import javax.swing.SwingWorker;
  */
 public class StockManagementPanel extends JPanel {
 
-  private static final Color BG        = Color.WHITE;
+  private static final Color BG        = UiTheme.PANEL_BG;
   private static final Color ERR_COLOR = new Color(0xe74c3c);
   private static final Color OK_COLOR  = new Color(0x27ae60);
-  private static final Font  LABEL_FONT = new Font("Segoe UI", Font.PLAIN, 13);
-
   private final ServerConnection connection;
 
   // ── Receive Stock tab ──────────────────────────────────────────────────────
@@ -62,12 +61,20 @@ public class StockManagementPanel extends JPanel {
 
   public StockManagementPanel(ServerConnection connection) {
     this.connection = connection;
+    UiTheme.styleTextFields(addCodeField, addQtyField, shelfCodeField, shelfQtyField);
+    UiTheme.styleSpinner(purchaseSpin);
+    UiTheme.styleSpinner(expirySpin);
+    UiTheme.styleRadioButton(storeRadio);
+    UiTheme.styleRadioButton(onlineRadio);
+    UiTheme.styleLabel(addMsgLabel);
+    UiTheme.styleLabel(shelfMsgLabel);
+
     setLayout(new BorderLayout());
     setBackground(BG);
     setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
     JTabbedPane tabs = new JTabbedPane();
-    tabs.setFont(LABEL_FONT);
+    UiTheme.styleTabbedPane(tabs);
     tabs.addTab("Receive Stock",  buildReceiveStockTab());
     tabs.addTab("Restock Shelf",  buildRestockShelfTab());
     add(tabs, BorderLayout.CENTER);
@@ -109,7 +116,6 @@ public class StockManagementPanel extends JPanel {
     gc.gridx = 1; gc.gridy = 5;
     form.add(receiveBtn, gc);
 
-    addMsgLabel.setFont(LABEL_FONT);
     gc.gridx = 0; gc.gridy = 6; gc.gridwidth = 2;
     form.add(addMsgLabel, gc);
 
@@ -139,7 +145,6 @@ public class StockManagementPanel extends JPanel {
     gc.gridx = 1; gc.gridy = 2;
     form.add(moveBtn, gc);
 
-    shelfMsgLabel.setFont(LABEL_FONT);
     gc.gridx = 0; gc.gridy = 3; gc.gridwidth = 2;
     form.add(shelfMsgLabel, gc);
 
@@ -254,13 +259,12 @@ public class StockManagementPanel extends JPanel {
   private void configureSpinnerDateEditor(JSpinner spinner) {
     JSpinner.DateEditor editor = new JSpinner.DateEditor(spinner, "yyyy-MM-dd");
     spinner.setEditor(editor);
+    UiTheme.styleSpinner(spinner);
   }
 
   private void addRow(JPanel panel, GridBagConstraints gc, int row, String labelText, java.awt.Component field) {
     gc.gridx = 0; gc.gridy = row; gc.gridwidth = 1; gc.weightx = 0;
-    JLabel lbl = new JLabel(labelText);
-    lbl.setFont(LABEL_FONT);
-    panel.add(lbl, gc);
+    panel.add(UiTheme.label(labelText), gc);
     gc.gridx = 1; gc.weightx = 1;
     panel.add(field, gc);
   }

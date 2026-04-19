@@ -5,6 +5,7 @@ import com.syos.protocol.BillDto;
 import com.syos.protocol.ItemDto;
 import com.syos.protocol.Request;
 import com.syos.protocol.Response;
+import com.syos.ui.UiTheme;
 import com.syos.ui.components.BillReceiptPanel;
 import com.syos.ui.components.StyledButton;
 import com.syos.ui.components.StyledTable;
@@ -43,12 +44,10 @@ import javax.swing.table.DefaultTableModel;
 public class InStoreSalePanel extends JPanel {
 
   // ── Colour / font constants ───────────────────────────────────────────────
-  private static final Color  BG          = Color.WHITE;
+  private static final Color  BG          = UiTheme.PANEL_BG;
   private static final Color  ERR_COLOR   = new Color(0xe74c3c);
   private static final Color  OK_COLOR    = new Color(0x27ae60);
   private static final Font   TOTAL_FONT  = new Font("Segoe UI", Font.BOLD, 18);
-  private static final Font   LABEL_FONT  = new Font("Segoe UI", Font.PLAIN, 13);
-
   private final ServerConnection connection;
 
   // ── Form fields ───────────────────────────────────────────────────────────
@@ -78,6 +77,7 @@ public class InStoreSalePanel extends JPanel {
   public InStoreSalePanel(ServerConnection connection) {
     this.connection = connection;
     this.cartTable  = new StyledTable("Item Code", "Item Name", "Qty", "Unit Price", "Total");
+    UiTheme.styleTextFields(itemCodeField, qtyField, cashField);
 
     setLayout(new BorderLayout(8, 8));
     setBackground(BG);
@@ -105,11 +105,11 @@ public class InStoreSalePanel extends JPanel {
   private JPanel buildInputRow() {
     JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
     p.setBackground(BG);
-    p.setBorder(BorderFactory.createTitledBorder("Add Item to Cart"));
+    p.setBorder(UiTheme.titledBorder("Add Item to Cart"));
 
-    p.add(label("Item Code:"));
+    p.add(UiTheme.label("Item Code:"));
     p.add(itemCodeField);
-    p.add(label("Qty:"));
+    p.add(UiTheme.label("Qty:"));
     p.add(qtyField);
 
     StyledButton addBtn = StyledButton.primary("Add Item");
@@ -130,7 +130,7 @@ public class InStoreSalePanel extends JPanel {
 
     // Total row
     totalLabel.setFont(TOTAL_FONT);
-    totalLabel.setForeground(new Color(0x1a2744));
+    totalLabel.setForeground(UiTheme.TEXT_PRIMARY);
     JPanel totalRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
     totalRow.setBackground(BG);
     totalRow.add(totalLabel);
@@ -139,7 +139,7 @@ public class InStoreSalePanel extends JPanel {
     // Cash + process row
     JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
     actionRow.setBackground(BG);
-    actionRow.add(label("Cash Tendered (Rs.):"));
+    actionRow.add(UiTheme.label("Cash Tendered (Rs.):"));
     actionRow.add(cashField);
     processBtn = StyledButton.success("Process Sale");
     processBtn.addActionListener(e -> processSale());
@@ -150,7 +150,8 @@ public class InStoreSalePanel extends JPanel {
     south.add(actionRow);
 
     // Message label
-    messageLabel.setFont(LABEL_FONT);
+    messageLabel.setFont(UiTheme.LABEL_FONT);
+    messageLabel.setForeground(UiTheme.TEXT_SECONDARY);
     JPanel msgRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 2));
     msgRow.setBackground(BG);
     msgRow.add(messageLabel);
@@ -329,11 +330,8 @@ public class InStoreSalePanel extends JPanel {
 
   private void showError(String msg)   { messageLabel.setForeground(ERR_COLOR); messageLabel.setText(msg); }
   private void showSuccess(String msg) { messageLabel.setForeground(OK_COLOR);  messageLabel.setText(msg); }
-  private void showMessage(String msg) { messageLabel.setForeground(Color.BLACK); messageLabel.setText(msg); }
-
-  private JLabel label(String text) {
-    JLabel l = new JLabel(text);
-    l.setFont(LABEL_FONT);
-    return l;
+  private void showMessage(String msg) {
+    messageLabel.setForeground(UiTheme.TEXT_SECONDARY);
+    messageLabel.setText(msg);
   }
 }

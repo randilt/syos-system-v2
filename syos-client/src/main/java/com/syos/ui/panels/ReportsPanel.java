@@ -4,6 +4,7 @@ import com.syos.network.ServerConnection;
 import com.syos.protocol.ReportDto;
 import com.syos.protocol.Request;
 import com.syos.protocol.Response;
+import com.syos.ui.UiTheme;
 import com.syos.ui.components.StyledButton;
 import com.syos.ui.components.StyledTable;
 import java.awt.BorderLayout;
@@ -46,7 +47,7 @@ public class ReportsPanel extends JPanel {
   private static final Color SIDEBAR_BG  = new Color(0x1a2744);
   private static final Color BTN_DEFAULT = new Color(0x243659);
   private static final Color BTN_ACTIVE  = new Color(0x2ecc71);
-  private static final Color BG          = Color.WHITE;
+  private static final Color BG          = UiTheme.PANEL_BG;
   private static final Color ERR_COLOR   = new Color(0xe74c3c);
   private static final Font  LABEL_FONT  = new Font("Segoe UI", Font.PLAIN, 13);
   private static final Font  TITLE_FONT  = new Font("Segoe UI", Font.BOLD, 15);
@@ -80,6 +81,13 @@ public class ReportsPanel extends JPanel {
 
   public ReportsPanel(ServerConnection connection) {
     this.connection = connection;
+    UiTheme.styleSpinner(dateSpin);
+    UiTheme.styleLabel(titleLabel);
+    UiTheme.styleLabel(countLabel);
+    UiTheme.styleLabel(msgLabel);
+    countLabel.setForeground(UiTheme.TEXT_SECONDARY);
+    msgLabel.setForeground(UiTheme.TEXT_SECONDARY);
+
     setLayout(new BorderLayout());
     setBackground(BG);
 
@@ -155,10 +163,11 @@ public class ReportsPanel extends JPanel {
     JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(dateSpin, "yyyy-MM-dd");
     dateSpin.setEditor(dateEditor);
     dateSpin.setValue(new Date());
+    UiTheme.styleSpinner(dateSpin);
 
     JPanel topBar = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
     topBar.setBackground(BG);
-    topBar.add(label("Date:"));
+    topBar.add(UiTheme.label("Date:"));
     topBar.add(dateSpin);
     StyledButton genBtn = StyledButton.primary("Generate");
     genBtn.addActionListener(e -> generateReport());
@@ -173,7 +182,7 @@ public class ReportsPanel extends JPanel {
     centre.setBackground(BG);
 
     titleLabel.setFont(TITLE_FONT);
-    titleLabel.setForeground(new Color(0x1a2744));
+    titleLabel.setForeground(UiTheme.TEXT_PRIMARY);
     centre.add(titleLabel, BorderLayout.NORTH);
 
     tableHolder.setBackground(BG);
@@ -322,9 +331,4 @@ public class ReportsPanel extends JPanel {
     msgLabel.setText(msg);
   }
 
-  private JLabel label(String text) {
-    JLabel l = new JLabel(text);
-    l.setFont(LABEL_FONT);
-    return l;
-  }
 }
