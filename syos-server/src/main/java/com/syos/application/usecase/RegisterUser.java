@@ -3,6 +3,9 @@ package com.syos.application.usecase;
 import com.syos.domain.model.User;
 import com.syos.domain.repository.UserRepository;
 
+/**
+ * Use case: registers a new customer in the system.
+ */
 public class RegisterUser {
   private final UserRepository userRepository;
 
@@ -11,6 +14,8 @@ public class RegisterUser {
       throw new IllegalArgumentException("User repository cannot be null");
     this.userRepository = userRepository;
   }
+
+  /** Executes the use case with the given inputs. */
 
   public User execute(String username, String email) {
     if (username == null || username.trim().isEmpty()) {

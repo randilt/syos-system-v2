@@ -13,6 +13,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * JDBC adapter implementing {StockBatchRepository} for one stock location.
+ */
 public class JdbcStockBatchRepository implements StockBatchRepository {
   private final DatabaseManager databaseManager;
   private final String stockType;
@@ -29,6 +32,7 @@ public class JdbcStockBatchRepository implements StockBatchRepository {
   }
 
   @Override
+  /** Persists the entity. */
   public void save(StockBatch batch) {
     if (batch == null) throw new IllegalArgumentException("Batch cannot be null");
     String sql =
@@ -67,6 +71,7 @@ public class JdbcStockBatchRepository implements StockBatchRepository {
   }
 
   @Override
+  /** FindByItemCode operation. */
   public List<StockBatch> findByItemCode(ItemCode itemCode) {
     if (itemCode == null) throw new IllegalArgumentException("Item code cannot be null");
     String sql =
@@ -82,6 +87,7 @@ public class JdbcStockBatchRepository implements StockBatchRepository {
   }
 
   @Override
+  /** Returns all entities. */
   public List<StockBatch> findAll() {
     String sql =
         "SELECT batch_id, item_code, purchase_date, expiry_date, quantity FROM stock_batches WHERE stock_type = ?";
@@ -89,6 +95,7 @@ public class JdbcStockBatchRepository implements StockBatchRepository {
   }
 
   @Override
+  /** GetTotalStock operation. */
   public int getTotalStock(ItemCode itemCode) {
     if (itemCode == null) throw new IllegalArgumentException("Item code cannot be null");
     String sql =
@@ -126,6 +133,7 @@ public class JdbcStockBatchRepository implements StockBatchRepository {
   }
 
   @Override
+  /** Returns the next available batch identifier. */
   public String nextBatchId() {
     int nextValue = sequenceGenerator.getNextId("BATCH_ID");
     return String.format("BATCH-%06d", nextValue);

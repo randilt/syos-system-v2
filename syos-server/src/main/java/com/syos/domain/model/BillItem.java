@@ -2,6 +2,9 @@ package com.syos.domain.model;
 
 import java.util.Objects;
 
+/**
+ * Value object for a single line on a {Bill}.
+ */
 public class BillItem {
   private final ItemCode itemCode;
   private final String itemName;
@@ -25,27 +28,38 @@ public class BillItem {
     this.totalPrice = totalPrice;
   }
 
+  /** GetItemCode operation. */
+
   public ItemCode getItemCode() {
     return itemCode;
   }
+
+  /** GetItemName operation. */
 
   public String getItemName() {
     return itemName;
   }
 
+  /** GetQuantity operation. */
+
   public int getQuantity() {
     return quantity;
   }
 
+  /** GetUnitPrice operation. */
+
   public Money getUnitPrice() {
     return unitPrice;
   }
+
+  /** GetTotalPrice operation. */
 
   public Money getTotalPrice() {
     return totalPrice;
   }
 
   @Override
+  /** Equals operation. */
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -58,6 +72,7 @@ public class BillItem {
   }
 
   @Override
+  /** HashCode operation. */
   public int hashCode() {
     return Objects.hash(itemCode, itemName, quantity, unitPrice, totalPrice);
   }

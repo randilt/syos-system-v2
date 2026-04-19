@@ -15,6 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC adapter implementing {ItemRepository}.
+ */
 public class JdbcItemRepository implements ItemRepository {
   private final DatabaseManager databaseManager;
 
@@ -25,6 +28,7 @@ public class JdbcItemRepository implements ItemRepository {
   }
 
   @Override
+  /** Persists the entity. */
   public void save(Item item) {
     if (item == null) throw new IllegalArgumentException("Item cannot be null");
     String sql =
@@ -58,6 +62,7 @@ public class JdbcItemRepository implements ItemRepository {
   }
 
   @Override
+  /** Finds an entity by its business key. */
   public Optional<Item> findByCode(ItemCode code) {
     if (code == null) throw new IllegalArgumentException("Item code cannot be null");
     String sql = "SELECT item_code, name, unit_price FROM items WHERE item_code = ?";
@@ -92,6 +97,7 @@ public class JdbcItemRepository implements ItemRepository {
   }
 
   @Override
+  /** Returns all entities. */
   public List<Item> findAll() {
     String sql = "SELECT item_code, name, unit_price FROM items";
     List<Item> items = new ArrayList<>();
@@ -124,6 +130,7 @@ public class JdbcItemRepository implements ItemRepository {
   }
 
   @Override
+  /** Returns whether an entity exists for the given key. */
   public boolean exists(ItemCode code) {
     if (code == null) throw new IllegalArgumentException("Item code cannot be null");
     String sql = "SELECT 1 FROM items WHERE item_code = ?";

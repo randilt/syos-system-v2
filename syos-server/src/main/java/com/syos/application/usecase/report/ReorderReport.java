@@ -6,6 +6,9 @@ import com.syos.domain.repository.StockBatchRepository;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Report implementation listing items below the reorder threshold.
+ */
 public class ReorderReport extends AbstractReport {
   private final StockBatchRepository stockRepository;
   private final ItemRepository itemRepository;
@@ -26,6 +29,7 @@ public class ReorderReport extends AbstractReport {
   }
 
   @Override
+  /** Returns the human-readable report title. */
   public String getTitle() {
     return "Reorder Report (Threshold: " + reorderThreshold + " units)";
   }

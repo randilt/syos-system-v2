@@ -6,6 +6,9 @@ import com.syos.domain.model.BillItem;
 import com.syos.infrastructure.service.StockManager;
 import java.time.LocalDate;
 
+/**
+ * Observer that restocks the shelf via {StockManager} when a sale event fires.
+ */
 public class StockUpdateListener implements SaleEventListener {
   private final StockManager stockManager;
 
@@ -17,6 +20,7 @@ public class StockUpdateListener implements SaleEventListener {
   }
 
   @Override
+  /** OnSale operation. */
   public void onSale(SaleEvent event) {
     LocalDate date = event.getBill().getDate();
     for (BillItem item : event.getBill().getItems()) {

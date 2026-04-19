@@ -6,6 +6,9 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Report implementation showing reshelving quantities derived from sales.
+ */
 public class ReshelvingReport extends AbstractReport {
   private final ReshelvingCalculator reshelvingCalculator;
   private final ItemRepository itemRepository;
@@ -25,6 +28,7 @@ public class ReshelvingReport extends AbstractReport {
   }
 
   @Override
+  /** Returns the human-readable report title. */
   public String getTitle() {
     return "Reshelving Report - " + date;
   }

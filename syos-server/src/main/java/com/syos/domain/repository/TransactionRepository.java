@@ -5,6 +5,9 @@ import com.syos.domain.model.TransactionType;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Repository port for stock {Transaction} records.
+ */
 public interface TransactionRepository {
   void save(Transaction transaction);
 

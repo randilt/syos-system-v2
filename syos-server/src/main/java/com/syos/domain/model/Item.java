@@ -2,6 +2,9 @@ package com.syos.domain.model;
 
 import java.util.Objects;
 
+/**
+ * Entity representing a catalogue product identified by {ItemCode}.
+ */
 public class Item {
   private final ItemCode code;
   private final String name;
@@ -18,23 +21,32 @@ public class Item {
     this.unitPrice = unitPrice;
   }
 
+  /** GetCode operation. */
+
   public ItemCode getCode() {
     return code;
   }
+
+  /** GetName operation. */
 
   public String getName() {
     return name;
   }
 
+  /** GetUnitPrice operation. */
+
   public Money getUnitPrice() {
     return unitPrice;
   }
+
+  /** CalculateTotal operation. */
 
   public Money calculateTotal(int quantity) {
     return unitPrice.multiply(quantity);
   }
 
   @Override
+  /** Equals operation. */
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -43,6 +55,7 @@ public class Item {
   }
 
   @Override
+  /** HashCode operation. */
   public int hashCode() {
     return Objects.hash(code);
   }

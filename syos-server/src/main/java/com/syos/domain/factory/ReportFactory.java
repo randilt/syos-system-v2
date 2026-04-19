@@ -16,6 +16,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
+/**
+ * Factory (creational pattern) that builds report instances by type key. Used by {RequestRouter}.
+ */
 public class ReportFactory {
   private final BillRepository billRepository;
   private final ItemRepository itemRepository;
@@ -56,6 +59,8 @@ public class ReportFactory {
     this.reportSuppliers = new HashMap<>();
     initializeSuppliers();
   }
+
+  /** Creates a report instance for the given type key and date. */
 
   public Report createReport(String reportType, LocalDate date) {
     if (reportType == null || date == null) {

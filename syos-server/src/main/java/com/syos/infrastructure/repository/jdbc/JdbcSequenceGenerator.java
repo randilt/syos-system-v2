@@ -7,6 +7,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * JDBC helper for allocating monotonic IDs from id_sequences table.
+ */
 public class JdbcSequenceGenerator {
   private final DatabaseManager databaseManager;
 
@@ -15,6 +18,8 @@ public class JdbcSequenceGenerator {
       throw new IllegalArgumentException("Database manager cannot be null");
     this.databaseManager = databaseManager;
   }
+
+  /** GetNextId operation. */
 
   public int getNextId(String sequenceName) {
     if (sequenceName == null || sequenceName.isBlank()) {

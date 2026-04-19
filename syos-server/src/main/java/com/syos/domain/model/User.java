@@ -2,6 +2,9 @@ package com.syos.domain.model;
 
 import java.util.Objects;
 
+/**
+ * Entity representing a registered online customer.
+ */
 public class User {
   private final String userId;
   private final String username;
@@ -20,19 +23,26 @@ public class User {
     this.email = email.trim();
   }
 
+  /** GetUserId operation. */
+
   public String getUserId() {
     return userId;
   }
 
+  /** GetUsername operation. */
+
   public String getUsername() {
     return username;
   }
+
+  /** GetEmail operation. */
 
   public String getEmail() {
     return email;
   }
 
   @Override
+  /** Equals operation. */
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -41,6 +51,7 @@ public class User {
   }
 
   @Override
+  /** HashCode operation. */
   public int hashCode() {
     return Objects.hash(userId);
   }

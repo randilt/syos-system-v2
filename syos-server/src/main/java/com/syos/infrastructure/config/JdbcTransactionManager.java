@@ -5,6 +5,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.function.Supplier;
 
+/**
+ * Infrastructure adapter implementing {TransactionManager} with JDBC commit/rollback.
+ */
 public class JdbcTransactionManager implements TransactionManager {
   private final DatabaseManager databaseManager;
 
@@ -16,6 +19,7 @@ public class JdbcTransactionManager implements TransactionManager {
   }
 
   @Override
+  /** ExecuteInTransaction operation. */
   public <T> T executeInTransaction(Supplier<T> action) {
     if (action == null) {
       throw new IllegalArgumentException("Action cannot be null");

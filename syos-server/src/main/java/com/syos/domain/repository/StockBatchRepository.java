@@ -4,6 +4,9 @@ import com.syos.domain.model.ItemCode;
 import com.syos.domain.model.StockBatch;
 import java.util.List;
 
+/**
+ * Repository port for stock batches in a specific location (STORE/SHELF/ONLINE).
+ */
 public interface StockBatchRepository {
   void save(StockBatch batch);
 

@@ -2,6 +2,9 @@ package com.syos.domain.event;
 
 import com.syos.domain.model.Bill;
 
+/**
+ * Domain event raised when a sale is completed; consumed by {StockUpdateListener}.
+ */
 public class SaleEvent {
   private final Bill bill;
 
@@ -11,6 +14,8 @@ public class SaleEvent {
     }
     this.bill = bill;
   }
+
+  /** GetBill operation. */
 
   public Bill getBill() {
     return bill;

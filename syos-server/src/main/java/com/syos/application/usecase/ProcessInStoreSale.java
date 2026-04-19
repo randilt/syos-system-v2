@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Use case: processes an in-store sale, persists bill/transaction, and publishes domain events.
+ */
 public class ProcessInStoreSale {
   private final ItemRepository itemRepository;
   private final BillRepository billRepository;

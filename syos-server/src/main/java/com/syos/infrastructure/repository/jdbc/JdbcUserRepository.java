@@ -10,6 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
 
+/**
+ * JDBC adapter implementing {UserRepository}.
+ */
 public class JdbcUserRepository implements UserRepository {
   private final DatabaseManager databaseManager;
   private final JdbcSequenceGenerator sequenceGenerator;
@@ -22,6 +25,7 @@ public class JdbcUserRepository implements UserRepository {
   }
 
   @Override
+  /** Persists the entity. */
   public void save(User user) {
     if (user == null) throw new IllegalArgumentException("User cannot be null");
     String sql =
@@ -55,6 +59,7 @@ public class JdbcUserRepository implements UserRepository {
   }
 
   @Override
+  /** FindById operation. */
   public Optional<User> findById(String userId) {
     if (userId == null) throw new IllegalArgumentException("User ID cannot be null");
     String sql = "SELECT user_id, username, email FROM users WHERE user_id = ?";
@@ -89,6 +94,7 @@ public class JdbcUserRepository implements UserRepository {
   }
 
   @Override
+  /** Returns whether an entity exists for the given key. */
   public boolean exists(String userId) {
     if (userId == null) throw new IllegalArgumentException("User ID cannot be null");
     String sql = "SELECT 1 FROM users WHERE user_id = ?";
@@ -120,6 +126,7 @@ public class JdbcUserRepository implements UserRepository {
   }
 
   @Override
+  /** NextUserId operation. */
   public String nextUserId() {
     int nextValue = sequenceGenerator.getNextId("USER_ID");
     return String.format("USER-%06d", nextValue);

@@ -6,6 +6,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Aggregate root representing a sales bill with line items and totals.
+ */
 public class Bill {
   private final int serialNumber;
   private final LocalDate date;
@@ -29,45 +32,67 @@ public class Bill {
     this.userId = builder.userId;
   }
 
+  /** GetSerialNumber operation. */
+
   public int getSerialNumber() {
     return serialNumber;
   }
+
+  /** GetDate operation. */
 
   public LocalDate getDate() {
     return date;
   }
 
+  /** GetType operation. */
+
   public TransactionType getType() {
     return type;
   }
+
+  /** GetItems operation. */
 
   public List<BillItem> getItems() {
     return items;
   }
 
+  /** GetFullPrice operation. */
+
   public Money getFullPrice() {
     return fullPrice;
   }
+
+  /** GetDiscount operation. */
 
   public Money getDiscount() {
     return discount;
   }
 
+  /** GetCashTendered operation. */
+
   public Money getCashTendered() {
     return cashTendered;
   }
+
+  /** GetChange operation. */
 
   public Money getChange() {
     return change;
   }
 
+  /** GetUserId operation. */
+
   public String getUserId() {
     return userId;
   }
 
+  /** GetFinalAmount operation. */
+
   public Money getFinalAmount() {
     return fullPrice.subtract(discount);
   }
+
+  /** Builder operation. */
 
   public static Builder builder() {
     return new Builder();
@@ -85,50 +110,70 @@ public class Bill {
     private Money change = Money.zero();
     private String userId;
 
+    /** SerialNumber operation. */
+
     public Builder serialNumber(int serialNumber) {
       this.serialNumber = serialNumber;
       return this;
     }
+
+    /** Date operation. */
 
     public Builder date(LocalDate date) {
       this.date = date;
       return this;
     }
 
+    /** Type operation. */
+
     public Builder type(TransactionType type) {
       this.type = type;
       return this;
     }
+
+    /** AddItem operation. */
 
     public Builder addItem(BillItem item) {
       this.items.add(item);
       return this;
     }
 
+    /** FullPrice operation. */
+
     public Builder fullPrice(Money fullPrice) {
       this.fullPrice = fullPrice;
       return this;
     }
+
+    /** Discount operation. */
 
     public Builder discount(Money discount) {
       this.discount = discount;
       return this;
     }
 
+    /** CashTendered operation. */
+
     public Builder cashTendered(Money cashTendered) {
       this.cashTendered = cashTendered;
       return this;
     }
+
+    /** Change operation. */
 
     public Builder change(Money change) {
       this.change = change;
       return this;
     }
 
+    /** UserId operation. */
+
     public Builder userId(String userId) {
       this.userId = userId;
       return this;
     }
+
+    /** Build operation. */
 
     public Bill build() {
       if (date == null) throw new IllegalStateException("Date is required");
@@ -147,6 +192,7 @@ public class Bill {
   }
 
   @Override
+  /** Equals operation. */
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -155,6 +201,7 @@ public class Bill {
   }
 
   @Override
+  /** HashCode operation. */
   public int hashCode() {
     return Objects.hash(serialNumber);
   }

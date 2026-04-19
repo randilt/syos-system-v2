@@ -8,6 +8,9 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Report implementation listing stock batches for a location on a given date.
+ */
 public class StockReport extends AbstractReport {
   private final StockBatchRepository stockRepository;
   private final ItemRepository itemRepository;
@@ -27,6 +30,7 @@ public class StockReport extends AbstractReport {
   }
 
   @Override
+  /** Returns the human-readable report title. */
   public String getTitle() {
     return "Stock Report - " + currentDate;
   }

@@ -6,6 +6,9 @@ import com.syos.domain.repository.BillRepository;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Report implementation listing all bills. Created by {ReportFactory} (type 9).
+ */
 public class BillReport extends AbstractReport {
   private final BillRepository billRepository;
   private final TransactionType type;
@@ -18,6 +21,7 @@ public class BillReport extends AbstractReport {
   }
 
   @Override
+  /** Returns the human-readable report title. */
   public String getTitle() {
     String typeStr = type == null ? "All Transactions" : type.name() + " Transactions";
     return "Bill Report - " + typeStr;

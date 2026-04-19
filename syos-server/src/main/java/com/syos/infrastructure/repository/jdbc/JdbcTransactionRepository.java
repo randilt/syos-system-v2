@@ -13,6 +13,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * JDBC adapter implementing {TransactionRepository}.
+ */
 public class JdbcTransactionRepository implements TransactionRepository {
   private final DatabaseManager databaseManager;
   private final JdbcSequenceGenerator sequenceGenerator;
@@ -25,6 +28,7 @@ public class JdbcTransactionRepository implements TransactionRepository {
   }
 
   @Override
+  /** Persists the entity. */
   public void save(Transaction transaction) {
     if (transaction == null) throw new IllegalArgumentException("Transaction cannot be null");
     String sql =
@@ -62,12 +66,14 @@ public class JdbcTransactionRepository implements TransactionRepository {
   }
 
   @Override
+  /** NextTransactionId operation. */
   public String nextTransactionId() {
     int nextValue = sequenceGenerator.getNextId("TXN_ID");
     return String.format("TXN-%06d", nextValue);
   }
 
   @Override
+  /** Returns all entities. */
   public List<Transaction> findAll() {
     String sql =
         "SELECT transaction_id, bill_serial_number, txn_date, type, user_id FROM transactions";
@@ -75,6 +81,7 @@ public class JdbcTransactionRepository implements TransactionRepository {
   }
 
   @Override
+  /** FindByDate operation. */
   public List<Transaction> findByDate(LocalDate date) {
     if (date == null) throw new IllegalArgumentException("Date cannot be null");
     String sql =
@@ -83,6 +90,7 @@ public class JdbcTransactionRepository implements TransactionRepository {
   }
 
   @Override
+  /** FindByType operation. */
   public List<Transaction> findByType(TransactionType type) {
     if (type == null) throw new IllegalArgumentException("Transaction type cannot be null");
     String sql =
@@ -91,6 +99,7 @@ public class JdbcTransactionRepository implements TransactionRepository {
   }
 
   @Override
+  /** FindByDateAndType operation. */
   public List<Transaction> findByDateAndType(LocalDate date, TransactionType type) {
     if (date == null) throw new IllegalArgumentException("Date cannot be null");
     if (type == null) throw new IllegalArgumentException("Transaction type cannot be null");

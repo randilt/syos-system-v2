@@ -5,6 +5,9 @@ import com.syos.domain.model.ItemCode;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository port for {Item} catalogue access.
+ */
 public interface ItemRepository {
   void save(Item item);
 

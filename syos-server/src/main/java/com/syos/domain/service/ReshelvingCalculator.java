@@ -11,6 +11,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Domain service calculating reshelving quantities from sales history.
+ */
 public class ReshelvingCalculator {
   private final BillRepository billRepository;
   private final StockBatchRepository storeStockRepository;
@@ -26,6 +29,8 @@ public class ReshelvingCalculator {
     this.billRepository = billRepository;
     this.storeStockRepository = storeStockRepository;
   }
+
+  /** Calculate operation. */
 
   public Map<ItemCode, ReshelvingSummary> calculate(LocalDate date) {
     if (date == null) {
@@ -68,17 +73,25 @@ public class ReshelvingCalculator {
       this.reshelvedQty = reshelvedQty;
     }
 
+    /** GetItemCode operation. */
+
     public ItemCode getItemCode() {
       return itemCode;
     }
+
+    /** GetSoldQty operation. */
 
     public int getSoldQty() {
       return soldQty;
     }
 
+    /** GetAvailableStoreQty operation. */
+
     public int getAvailableStoreQty() {
       return availableStoreQty;
     }
+
+    /** GetReshelvedQty operation. */
 
     public int getReshelvedQty() {
       return reshelvedQty;

@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC adapter implementing {BillRepository}.
+ */
 public class JdbcBillRepository implements BillRepository {
   private final DatabaseManager databaseManager;
   private final JdbcSequenceGenerator sequenceGenerator;
@@ -30,6 +33,7 @@ public class JdbcBillRepository implements BillRepository {
   }
 
   @Override
+  /** Persists the entity. */
   public void save(Bill bill) {
     if (bill == null) throw new IllegalArgumentException("Bill cannot be null");
     String billSql =
@@ -107,6 +111,7 @@ public class JdbcBillRepository implements BillRepository {
   }
 
   @Override
+  /** FindBySerialNumber operation. */
   public Optional<Bill> findBySerialNumber(int serialNumber) {
     String sql =
         "SELECT serial_number, bill_date, type, full_price, discount, cash_tendered, change_amount, user_id "
@@ -142,6 +147,7 @@ public class JdbcBillRepository implements BillRepository {
   }
 
   @Override
+  /** Returns all entities. */
   public List<Bill> findAll() {
     String sql =
         "SELECT serial_number, bill_date, type, full_price, discount, cash_tendered, change_amount, user_id FROM bills";
@@ -149,6 +155,7 @@ public class JdbcBillRepository implements BillRepository {
   }
 
   @Override
+  /** FindByDate operation. */
   public List<Bill> findByDate(LocalDate date) {
     if (date == null) throw new IllegalArgumentException("Date cannot be null");
     String sql =
@@ -158,6 +165,7 @@ public class JdbcBillRepository implements BillRepository {
   }
 
   @Override
+  /** FindByType operation. */
   public List<Bill> findByType(TransactionType type) {
     if (type == null) throw new IllegalArgumentException("Transaction type cannot be null");
     String sql =
@@ -167,6 +175,7 @@ public class JdbcBillRepository implements BillRepository {
   }
 
   @Override
+  /** FindByDateAndType operation. */
   public List<Bill> findByDateAndType(LocalDate date, TransactionType type) {
     if (date == null) throw new IllegalArgumentException("Date cannot be null");
     if (type == null) throw new IllegalArgumentException("Transaction type cannot be null");
@@ -182,6 +191,7 @@ public class JdbcBillRepository implements BillRepository {
   }
 
   @Override
+  /** GetNextSerialNumber operation. */
   public int getNextSerialNumber() {
     return sequenceGenerator.getNextId("BILL_SERIAL");
   }

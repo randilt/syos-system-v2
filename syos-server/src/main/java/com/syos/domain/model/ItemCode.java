@@ -2,6 +2,9 @@ package com.syos.domain.model;
 
 import java.util.Objects;
 
+/**
+ * Value object wrapping a validated product code string.
+ */
 public final class ItemCode {
   private final String value;
 
@@ -12,15 +15,20 @@ public final class ItemCode {
     this.value = value.trim().toUpperCase();
   }
 
+  /** Of operation. */
+
   public static ItemCode of(String value) {
     return new ItemCode(value);
   }
+
+  /** GetValue operation. */
 
   public String getValue() {
     return value;
   }
 
   @Override
+  /** Equals operation. */
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -29,11 +37,13 @@ public final class ItemCode {
   }
 
   @Override
+  /** HashCode operation. */
   public int hashCode() {
     return Objects.hash(value);
   }
 
   @Override
+  /** ToString operation. */
   public String toString() {
     return value;
   }

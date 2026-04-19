@@ -8,6 +8,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Report implementation summarising sales for a date, optionally filtered by {TransactionType}.
+ */
 public class DailySalesReport extends AbstractReport {
   private final BillRepository billRepository;
   private final ItemRepository itemRepository;
@@ -32,6 +35,7 @@ public class DailySalesReport extends AbstractReport {
   }
 
   @Override
+  /** Returns the human-readable report title. */
   public String getTitle() {
     String typeStr = type == null ? "All" : type.name();
     return "Daily Sales Report - " + date + " (" + typeStr + ")";

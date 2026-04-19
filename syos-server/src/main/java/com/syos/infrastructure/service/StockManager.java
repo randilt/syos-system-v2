@@ -7,6 +7,9 @@ import com.syos.domain.service.StockSelectionStrategy;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Application service coordinating stock moves between STORE and SHELF batches.
+ */
 public class StockManager {
   private final StockBatchRepository storeStockRepository;
   private final StockBatchRepository shelfStockRepository;
@@ -27,6 +30,8 @@ public class StockManager {
     this.shelfStockRepository = shelfStockRepository;
     this.selectionStrategy = selectionStrategy;
   }
+
+  /** Moves quantity from store stock to shelf stock. */
 
   public synchronized void moveToShelf(ItemCode itemCode, int quantity, LocalDate currentDate) {
     if (itemCode == null) throw new IllegalArgumentException("Item code cannot be null");
@@ -62,6 +67,8 @@ public class StockManager {
       throw new IllegalStateException("Insufficient store stock for item: " + itemCode);
     }
   }
+
+  /** ReduceShelfStock operation. */
 
   public synchronized void reduceShelfStock(
       ItemCode itemCode, int quantity, LocalDate currentDate) {

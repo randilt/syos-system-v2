@@ -5,6 +5,9 @@ import com.syos.domain.model.StockBatch;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Strategy interface for choosing which stock batches to deduct.
+ */
 public interface StockSelectionStrategy {
   StockBatch selectBatch(
       List<StockBatch> batches, ItemCode itemCode, int quantity, LocalDate currentDate);

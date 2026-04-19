@@ -2,6 +2,9 @@ package com.syos.domain.service;
 
 import com.syos.domain.model.Money;
 
+/**
+ * Strategy implementation applying a fixed percentage discount.
+ */
 public class PercentageDiscountCalculator implements DiscountCalculator {
   private final double percentage;
 
@@ -13,6 +16,7 @@ public class PercentageDiscountCalculator implements DiscountCalculator {
   }
 
   @Override
+  /** CalculateDiscount operation. */
   public Money calculateDiscount(Money fullPrice) {
     if (fullPrice == null) {
       throw new IllegalArgumentException("Full price cannot be null");

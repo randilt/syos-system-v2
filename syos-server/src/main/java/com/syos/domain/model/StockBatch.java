@@ -3,6 +3,9 @@ package com.syos.domain.model;
 import java.time.LocalDate;
 import java.util.Objects;
 
+/**
+ * Entity representing a quantity of stock with purchase/expiry dates.
+ */
 public class StockBatch {
   private final String batchId;
   private final ItemCode itemCode;
@@ -32,29 +35,43 @@ public class StockBatch {
     this.quantity = quantity;
   }
 
+  /** GetBatchId operation. */
+
   public String getBatchId() {
     return batchId;
   }
+
+  /** GetItemCode operation. */
 
   public ItemCode getItemCode() {
     return itemCode;
   }
 
+  /** GetPurchaseDate operation. */
+
   public LocalDate getPurchaseDate() {
     return purchaseDate;
   }
+
+  /** GetExpiryDate operation. */
 
   public LocalDate getExpiryDate() {
     return expiryDate;
   }
 
+  /** GetQuantity operation. */
+
   public int getQuantity() {
     return quantity;
   }
 
+  /** IsExpired operation. */
+
   public boolean isExpired(LocalDate date) {
     return expiryDate.isBefore(date);
   }
+
+  /** ReduceQuantity operation. */
 
   public int reduceQuantity(int amount) {
     if (amount < 0) throw new IllegalArgumentException("Reduction amount cannot be negative");
@@ -64,17 +81,22 @@ public class StockBatch {
     return quantity;
   }
 
+  /** AddQuantity operation. */
+
   public int addQuantity(int amount) {
     if (amount < 0) throw new IllegalArgumentException("Amount to add cannot be negative");
     quantity += amount;
     return quantity;
   }
 
+  /** HasQuantity operation. */
+
   public boolean hasQuantity() {
     return quantity > 0;
   }
 
   @Override
+  /** Equals operation. */
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -83,6 +105,7 @@ public class StockBatch {
   }
 
   @Override
+  /** HashCode operation. */
   public int hashCode() {
     return Objects.hash(batchId);
   }

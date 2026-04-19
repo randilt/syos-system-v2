@@ -5,6 +5,9 @@ import com.syos.domain.model.StockBatch;
 import com.syos.domain.repository.StockBatchRepository;
 import java.time.LocalDate;
 
+/**
+ * Use case: records a new stock batch for an item in a stock repository (STORE or ONLINE).
+ */
 public class AddStock {
   private final StockBatchRepository repository;
 
@@ -12,6 +15,8 @@ public class AddStock {
     if (repository == null) throw new IllegalArgumentException("Repository cannot be null");
     this.repository = repository;
   }
+
+  /** Executes the use case with the given inputs. */
 
   public StockBatch execute(
       ItemCode itemCode, LocalDate purchaseDate, LocalDate expiryDate, int quantity) {

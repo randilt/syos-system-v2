@@ -9,6 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Use case: processes an online sale for a registered user with online stock deduction.
+ */
 public class ProcessOnlineSale {
   private final ItemRepository itemRepository;
   private final BillRepository billRepository;
@@ -49,6 +52,8 @@ public class ProcessOnlineSale {
     this.discountCalculator = discountCalculator;
     this.transactionManager = transactionManager;
   }
+
+  /** Executes the use case with the given inputs. */
 
   public Bill execute(String userId, Map<ItemCode, Integer> itemsWithQuantities, LocalDate date) {
     if (userId == null || userId.trim().isEmpty()) {
