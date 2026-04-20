@@ -63,7 +63,7 @@ class DailySalesReportTest {
             .orElseThrow(() -> new AssertionError("Expected Apple row"));
 
     assertEquals(2, appleRow.get("totalQuantity"));
-    assertEquals(Money.of(5.00), appleRow.get("totalRevenue"));
+    assertEquals(Money.of(5.00).getAmount(), appleRow.get("totalRevenue"));
   }
 
   @Test
@@ -81,7 +81,7 @@ class DailySalesReportTest {
             .orElseThrow(() -> new AssertionError("Expected Bread row"));
 
     assertEquals(1, breadRow.get("totalQuantity"));
-    assertEquals(Money.of(3.00), breadRow.get("totalRevenue"));
+    assertEquals(Money.of(3.00).getAmount(), breadRow.get("totalRevenue"));
   }
 
   private void createTestBills() {

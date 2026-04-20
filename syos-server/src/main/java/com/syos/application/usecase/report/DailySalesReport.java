@@ -13,7 +13,6 @@ import java.util.Map;
  */
 public class DailySalesReport extends AbstractReport {
   private final BillRepository billRepository;
-  private final ItemRepository itemRepository;
   private final LocalDate date;
   private final TransactionType type;
 
@@ -29,7 +28,6 @@ public class DailySalesReport extends AbstractReport {
     if (date == null) throw new IllegalArgumentException("Date cannot be null");
 
     this.billRepository = billRepository;
-    this.itemRepository = itemRepository;
     this.date = date;
     this.type = type;
   }
@@ -68,7 +66,7 @@ public class DailySalesReport extends AbstractReport {
               row.put("itemName", summary.itemName);
               row.put("itemCode", summary.itemCode.getValue());
               row.put("totalQuantity", summary.totalQuantity);
-              row.put("totalRevenue", summary.totalRevenue);
+              row.put("totalRevenue", summary.totalRevenue.getAmount());
               addRow(row);
             });
   }

@@ -8,7 +8,6 @@ import com.syos.ui.components.StyledButton;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -77,6 +76,15 @@ public class StockManagementPanel extends JPanel {
     UiTheme.styleTabbedPane(tabs);
     tabs.addTab("Receive Stock",  buildReceiveStockTab());
     tabs.addTab("Restock Shelf",  buildRestockShelfTab());
+    // Use custom JLabel components for tab headers so text colour is explicit
+    // and cannot be overridden by the Linux GTK Look-and-Feel.
+    for (int i = 0; i < tabs.getTabCount(); i++) {
+      JLabel tabLabel = new JLabel(tabs.getTitleAt(i));
+      tabLabel.setForeground(UiTheme.TEXT_PRIMARY);
+      tabLabel.setFont(UiTheme.LABEL_FONT);
+      tabLabel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
+      tabs.setTabComponentAt(i, tabLabel);
+    }
     add(tabs, BorderLayout.CENTER);
   }
 
