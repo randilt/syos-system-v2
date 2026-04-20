@@ -137,7 +137,7 @@ public class OnlineSalePanel extends JPanel {
     processBtn.addActionListener(e -> processSale());
     actionRow.add(processBtn);
     StyledButton clearBtn = StyledButton.danger("Clear Cart");
-    clearBtn.addActionListener(e -> clearCart());
+    clearBtn.addActionListener(e -> clearCart(true));
     actionRow.add(clearBtn);
     south.add(actionRow);
 
@@ -221,10 +221,13 @@ public class OnlineSalePanel extends JPanel {
     refreshTable();
   }
 
-  private void clearCart() {
+  private void clearCart(boolean clearReceipt) {
     cartRows.clear();
     refreshTable();
-    receiptPanel.clear();
+    clearInputs();
+    if (clearReceipt) {
+      receiptPanel.clear();
+    }
     showMessage(" ");
   }
 
@@ -252,10 +255,15 @@ public class OnlineSalePanel extends JPanel {
         try {
           Response r = get();
           if (r.isSuccess()) {
-            receiptPanel.displayBill((BillDto) r.getPayload());
-            showSuccess("Online sale processed successfully!");
-            clearCart();
-            userIdField.setText("");
+            Object payload = r.getPayload();
+            if (payload instanceof BillDto bill) {
+              receiptPanel.displayBill(bill);
+              showSuccess("Online sale processed successfully! Bill #" + bill.getSerialNumber());
+              clearCart(false);
+              userIdField.setText("");
+            } else {
+              showError("Unexpected response from server.");
+            }
           } else {
             showError(r.getErrorMessage());
           }

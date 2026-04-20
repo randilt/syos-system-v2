@@ -145,7 +145,7 @@ public class InStoreSalePanel extends JPanel {
     processBtn.addActionListener(e -> processSale());
     actionRow.add(processBtn);
     StyledButton clearBtn = StyledButton.danger("Clear Cart");
-    clearBtn.addActionListener(e -> clearCart());
+    clearBtn.addActionListener(e -> clearCart(true));
     actionRow.add(clearBtn);
     south.add(actionRow);
 
@@ -233,11 +233,15 @@ public class InStoreSalePanel extends JPanel {
     refreshTable();
   }
 
-  private void clearCart() {
+  /** Clears the cart form; optionally clears the receipt panel (Clear Cart button only). */
+  private void clearCart(boolean clearReceipt) {
     cartRows.clear();
     refreshTable();
     cashField.setText("");
-    receiptPanel.clear();
+    clearInputs();
+    if (clearReceipt) {
+      receiptPanel.clear();
+    }
     showMessage(" ");
   }
 
@@ -267,9 +271,14 @@ public class InStoreSalePanel extends JPanel {
         try {
           Response r = get();
           if (r.isSuccess()) {
-            receiptPanel.displayBill((BillDto) r.getPayload());
-            showSuccess("Sale processed successfully!");
-            clearCart();
+            Object payload = r.getPayload();
+            if (payload instanceof BillDto bill) {
+              receiptPanel.displayBill(bill);
+              showSuccess("Sale processed successfully! Bill #" + bill.getSerialNumber());
+              clearCart(false);
+            } else {
+              showError("Unexpected response from server.");
+            }
           } else {
             showError(r.getErrorMessage());
           }

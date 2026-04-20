@@ -104,6 +104,9 @@ public class BillReceiptPanel extends JPanel {
 
     receiptArea.setText(sb.toString());
     receiptArea.setCaretPosition(0);
+    UiTheme.styleTextArea(receiptArea);
+    receiptArea.revalidate();
+    receiptArea.repaint();
   }
 
   /** Clears the receipt display. */

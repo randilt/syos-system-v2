@@ -1,6 +1,7 @@
 package com.syos;
 
 import com.syos.ui.MainWindow;
+import com.syos.ui.UiTheme;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -29,6 +30,7 @@ public class ClientApp {
     // Apply system look-and-feel for native OS widgets
     try {
       UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+      UiTheme.installLightFormDefaults();
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Could not set system look-and-feel", e);
     }

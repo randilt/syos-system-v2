@@ -14,8 +14,11 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
+import javax.swing.plaf.basic.BasicTextAreaUI;
+import javax.swing.plaf.basic.BasicTextFieldUI;
 import javax.swing.table.DefaultTableCellRenderer;
 
 /**
@@ -42,6 +45,37 @@ public final class UiTheme {
 
   private UiTheme() {}
 
+  /**
+   * Call once at startup before any Swing components are created. Reduces GTK/dark-theme
+   * overrides on text fields inside white content panels.
+   */
+  public static void installLightFormDefaults() {
+    Color text = TEXT_PRIMARY;
+    Color bg = FIELD_BG;
+    Color selBg = TABLE_SELECTION_BG;
+    String[] keys = {
+        "TextField.background", "TextField.foreground", "TextField.caretForeground",
+        "TextField.selectionBackground", "TextField.selectionForeground",
+        "TextField.inactiveForeground", "TextField.disabledForeground",
+        "FormattedTextField.background", "FormattedTextField.foreground",
+        "FormattedTextField.caretForeground", "Spinner.background", "Spinner.foreground",
+        "TextArea.background", "TextArea.foreground", "TextArea.caretForeground",
+        "Table.background", "Table.foreground", "Table.selectionBackground",
+        "Table.selectionForeground"
+    };
+    for (String key : keys) {
+      if (key.contains("background") || key.contains("Background")) {
+        UIManager.put(key, bg);
+      } else if (key.contains("selectionBackground")) {
+        UIManager.put(key, selBg);
+      } else if (key.contains("selectionForeground") || key.contains("caret")) {
+        UIManager.put(key, text);
+      } else {
+        UIManager.put(key, text);
+      }
+    }
+  }
+
   public static void stylePanel(JPanel panel) {
     panel.setBackground(PANEL_BG);
     panel.setOpaque(true);
@@ -60,9 +94,13 @@ public final class UiTheme {
   }
 
   public static void styleTextField(JTextField field) {
+    field.setUI(new BasicTextFieldUI());
     field.setFont(FIELD_FONT);
     field.setBackground(FIELD_BG);
     field.setForeground(TEXT_PRIMARY);
+    field.setDisabledTextColor(TEXT_SECONDARY);
+    field.setSelectedTextColor(TEXT_PRIMARY);
+    field.setSelectionColor(TABLE_SELECTION_BG);
     field.setCaretColor(TEXT_PRIMARY);
     field.setOpaque(true);
     field.setBorder(BorderFactory.createCompoundBorder(
@@ -77,9 +115,13 @@ public final class UiTheme {
   }
 
   public static void styleTextArea(JTextArea area) {
+    area.setUI(new BasicTextAreaUI());
     area.setFont(new Font("Monospaced", Font.PLAIN, 12));
     area.setBackground(new Color(0xFAFAFA));
     area.setForeground(TEXT_PRIMARY);
+    area.setDisabledTextColor(TEXT_SECONDARY);
+    area.setSelectedTextColor(TEXT_PRIMARY);
+    area.setSelectionColor(TABLE_SELECTION_BG);
     area.setCaretColor(TEXT_PRIMARY);
     area.setOpaque(true);
   }
