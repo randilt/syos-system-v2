@@ -317,4 +317,10 @@ public class OnlineSalePanel extends JPanel {
     messageLabel.setForeground(UiTheme.TEXT_SECONDARY);
     messageLabel.setText(msg);
   }
+
+  /** Invalidates the item catalogue cache so fresh data is fetched on next use. */
+  public void invalidateCache() {
+    cacheLoaded = false;
+    itemCache.clear();
+  }
 }

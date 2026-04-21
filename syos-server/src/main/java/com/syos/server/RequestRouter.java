@@ -18,7 +18,6 @@ import com.syos.domain.repository.ItemRepository;
 import com.syos.infrastructure.service.StockManager;
 import com.syos.protocol.BillDto;
 import com.syos.protocol.BillItemDto;
-import com.syos.protocol.CommandType;
 import com.syos.protocol.ItemDto;
 import com.syos.protocol.ReportDto;
 import com.syos.protocol.Request;
@@ -101,6 +100,8 @@ public class RequestRouter {
         case GET_SHELF_STOCK_REPORT  -> handleNamedReport("7", request); // SHELF stock
         case GET_ONLINE_STOCK_REPORT -> handleNamedReport("8", request); // ONLINE stock
         case GET_BILL_REPORT         -> handleBillReport();
+        case SUBSCRIBE_PUSH          -> Response.success("ACK");
+        case PUSH_NOTIFICATION       -> Response.error("PUSH_NOTIFICATION cannot be sent by clients");
         case PING                    -> Response.success("PONG");
       };
     } catch (Exception e) {

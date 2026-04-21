@@ -1,5 +1,6 @@
 package com.syos.ui;
 
+import com.syos.network.PushListenerService;
 import com.syos.network.ServerConnection;
 import com.syos.ui.panels.InStoreSalePanel;
 import com.syos.ui.panels.OnlineSalePanel;
@@ -51,6 +52,7 @@ public class MainWindow extends JFrame {
   private static final Color CONTENT_BG     = Color.WHITE;
   private static final Color DOT_OK         = new Color(0x2ecc71);
   private static final Color DOT_ERR        = new Color(0xe74c3c);
+  private static final Color LIVE_OFFLINE   = new Color(0x95a5a6);
 
   // ── Fonts ─────────────────────────────────────────────────────────────────
   private static final Font SIDEBAR_FONT = new Font("Segoe UI", Font.PLAIN, 13);
@@ -69,11 +71,17 @@ public class MainWindow extends JFrame {
   private final ServerConnection connection;
   private final CardLayout        cardLayout   = new CardLayout();
   private final JPanel            contentArea  = new JPanel(cardLayout);
+  private PushListenerService pushListener;
+
+  private InStoreSalePanel inStoreSalePanel;
+  private OnlineSalePanel onlineSalePanel;
+  private ReportsPanel reportsPanel;
 
   private JLabel activeSidebarLabel = null;
   private JLabel clockLabel;
   private JLabel connDotLabel;
   private JLabel connTextLabel;
+  private JLabel pushStatusLabel;
 
   public MainWindow(String host, int port) {
     super("SYOS Billing System");
@@ -85,6 +93,9 @@ public class MainWindow extends JFrame {
     setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
     addWindowListener(new WindowAdapter() {
       @Override public void windowClosing(WindowEvent e) {
+        if (pushListener != null) {
+          pushListener.stop();
+        }
         connection.disconnect();
         dispose();
         System.exit(0);
@@ -107,12 +118,17 @@ public class MainWindow extends JFrame {
 
   private void connectToServer() {
     setConnectionStatus(false, "Connecting…");
-    new Thread(() -> {
+    setPushLiveStatus(false);
+    Thread connectThread = new Thread(() -> {
       boolean ok = connection.connect();
       javax.swing.SwingUtilities.invokeLater(() ->
-          setConnectionStatus(ok, ok ? "Connected" : "Offline")
-      );
-    }, "syos-connect").start();
+          setConnectionStatus(ok, ok ? "Connected" : "Offline"));
+      if (ok) {
+        startPushListener();
+      }
+    }, "syos-connect");
+    connectThread.setDaemon(true);
+    connectThread.start();
   }
 
   private void setConnectionStatus(boolean connected, String text) {
@@ -120,6 +136,46 @@ public class MainWindow extends JFrame {
     connDotLabel.repaint();
     connTextLabel.setText(text);
     connTextLabel.setForeground(connected ? DOT_OK : DOT_ERR);
+  }
+
+  private void setPushLiveStatus(boolean connected) {
+    if (pushStatusLabel == null) {
+      return;
+    }
+    pushStatusLabel.setText(connected ? "● Live" : "○ Live");
+    pushStatusLabel.setForeground(connected ? DOT_OK : LIVE_OFFLINE);
+  }
+
+  private void startPushListener() {
+    DataRefreshCoordinator coordinator =
+        new DataRefreshCoordinator(inStoreSalePanel, onlineSalePanel, reportsPanel, connection);
+    coordinator.setStatusNotifier(this::showTransientStatus);
+
+    pushListener = new PushListenerService(
+        connection.getHost(),
+        connection.getPort() + 1,
+        coordinator::refresh);
+
+    Thread pushThread = new Thread(() -> {
+      pushListener.connect();
+      javax.swing.SwingUtilities.invokeLater(() -> setPushLiveStatus(pushListener.isConnected()));
+      pushListener.start();
+    }, "syos-push-connect");
+    pushThread.setDaemon(true);
+    pushThread.start();
+  }
+
+  private void showTransientStatus(String status) {
+    String base = connection.isConnected() ? "Connected" : "Offline";
+    connTextLabel.setText(base + " | " + status);
+    connTextLabel.setForeground(connection.isConnected() ? DOT_OK : DOT_ERR);
+
+    Timer reset = new Timer(2_500, e -> {
+      connTextLabel.setText(base);
+      connTextLabel.setForeground(connection.isConnected() ? DOT_OK : DOT_ERR);
+    });
+    reset.setRepeats(false);
+    reset.start();
   }
 
   // ── UI Construction ───────────────────────────────────────────────────────
@@ -165,6 +221,12 @@ public class MainWindow extends JFrame {
     connTextLabel.setFont(CLOCK_FONT);
     connTextLabel.setForeground(DOT_ERR);
     right.add(connTextLabel);
+    right.add(Box.createHorizontalStrut(16));
+
+    pushStatusLabel = new JLabel("○ Live");
+    pushStatusLabel.setFont(CLOCK_FONT);
+    pushStatusLabel.setForeground(LIVE_OFFLINE);
+    right.add(pushStatusLabel);
     right.add(Box.createHorizontalStrut(24));
 
     clockLabel = new JLabel();
@@ -229,10 +291,14 @@ public class MainWindow extends JFrame {
   private JPanel buildContent() {
     contentArea.setBackground(CONTENT_BG);
 
-    contentArea.add(new InStoreSalePanel(connection),   "POS");
-    contentArea.add(new OnlineSalePanel(connection),    "ONLINE");
+    inStoreSalePanel = new InStoreSalePanel(connection);
+    onlineSalePanel = new OnlineSalePanel(connection);
+    reportsPanel = new ReportsPanel(connection);
+
+    contentArea.add(inStoreSalePanel,   "POS");
+    contentArea.add(onlineSalePanel,    "ONLINE");
     contentArea.add(new StockManagementPanel(connection), "STOCK");
-    contentArea.add(new ReportsPanel(connection),       "REPORTS");
+    contentArea.add(reportsPanel,       "REPORTS");
     contentArea.add(new UserRegistrationPanel(connection), "USERS");
 
     cardLayout.show(contentArea, "POS");

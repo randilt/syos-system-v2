@@ -36,8 +36,9 @@ public class ServerApp {
     // ── Startup banner ────────────────────────────────────────────────────
     System.out.println("╔══════════════════════════════════════════╗");
     System.out.println("║   SYOS Billing System v2  —  Server      ║");
-    System.out.printf ("║   Port: %-5d  Pool: %-3d  Queue: %-5d   ║%n",
-        port, DEFAULT_POOL_SIZE, DEFAULT_QUEUE_CAPACITY);
+    System.out.printf ("║   Req: %-5d  Push: %-5d               ║%n", port, port + 1);
+    System.out.printf ("║   Pool: %-3d  Queue: %-5d                  ║%n",
+      DEFAULT_POOL_SIZE, DEFAULT_QUEUE_CAPACITY);
     System.out.println("╚══════════════════════════════════════════╝");
     LOGGER.info("Starting SYOS server on port " + port);
 

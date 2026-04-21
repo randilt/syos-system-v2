@@ -198,6 +198,11 @@ public final class Request implements Serializable {
     return new Request(CommandType.PING, null);
   }
 
+  /** Subscribe this connection to receive server-push notifications. */
+  public static Request subscribePush() {
+    return new Request(CommandType.SUBSCRIBE_PUSH, null);
+  }
+
   // ── Accessors ────────────────────────────────────────────────────────────
 
   public CommandType getCommandType() {

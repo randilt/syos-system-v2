@@ -18,6 +18,7 @@ import com.syos.domain.service.ReshelvingCalculator;
 import com.syos.domain.service.StockSelectionStrategy;
 import com.syos.infrastructure.config.DatabaseManager;
 import com.syos.infrastructure.config.JdbcTransactionManager;
+import com.syos.infrastructure.event.SaleEventPushListener;
 import com.syos.infrastructure.event.StockUpdateListener;
 import com.syos.infrastructure.repository.jdbc.JdbcBillRepository;
 import com.syos.infrastructure.repository.jdbc.JdbcItemRepository;
@@ -83,6 +84,7 @@ public class ServerApplicationContext {
 
   // services
   private StockManager           stockManager;
+  private PushRegistry           pushRegistry;
 
   // use cases
   private ProcessInStoreSale     processInStoreSale;
@@ -150,7 +152,9 @@ public class ServerApplicationContext {
 
     // ── Events ────────────────────────────────────────────────────────────
     EventPublisher eventPublisher = new EventPublisher();
+    pushRegistry = PushRegistry.getInstance();
     eventPublisher.register(new StockUpdateListener(stockManager));
+    eventPublisher.register(new SaleEventPushListener(pushRegistry));
 
     // ── Use cases ─────────────────────────────────────────────────────────
     processInStoreSale = new ProcessInStoreSale(
@@ -227,6 +231,11 @@ public class ServerApplicationContext {
   public StockManager getStockManager() {
     ensureInitialized();
     return stockManager;
+  }
+
+  public PushRegistry getPushRegistry() {
+    ensureInitialized();
+    return pushRegistry;
   }
 
   public ProcessInStoreSale getProcessInStoreSale() {

@@ -26,13 +26,17 @@ public class SyosServer {
   private static final Logger LOGGER = Logger.getLogger(SyosServer.class.getName());
 
   private final int port;
+  private final int pushPort;
   private final ThreadPool threadPool;
 
   /** Injected router; null when using the public constructor (set lazily in start()). */
   private RequestRouter router;
+  private PushRegistry pushRegistry;
 
   private volatile boolean running;
   private ServerSocket serverSocket;
+  private ServerSocket pushServerSocket;
+  private Thread pushAcceptThread;
 
   private int connectedClients = 0;
   private int nextClientId = 0;
@@ -48,7 +52,14 @@ public class SyosServer {
    * @param queueCapacity  maximum number of tasks that may queue before blocking
    */
   public SyosServer(int port, int threadPoolSize, int queueCapacity) {
-    this(port, threadPoolSize, queueCapacity, null);
+    this(port, threadPoolSize, queueCapacity, null, null);
+  }
+
+  /**
+   * Production constructor with explicit push registry injection.
+   */
+  public SyosServer(int port, int threadPoolSize, int queueCapacity, PushRegistry pushRegistry) {
+    this(port, threadPoolSize, queueCapacity, null, pushRegistry);
   }
 
   /**
@@ -56,14 +67,29 @@ public class SyosServer {
    * {@link ServerApplicationContext} is never touched.
    */
   SyosServer(int port, int threadPoolSize, int queueCapacity, RequestRouter router) {
-    if (port < 1 || port > 65535) {
-      throw new IllegalArgumentException("Port must be between 1 and 65535: " + port);
+    this(port, threadPoolSize, queueCapacity, router, null);
+  }
+
+  SyosServer(
+      int port,
+      int threadPoolSize,
+      int queueCapacity,
+      RequestRouter router,
+      PushRegistry pushRegistry) {
+    if (port < 1 || port > 65534) {
+      throw new IllegalArgumentException("Port must be between 1 and 65534: " + port);
     }
     if (threadPoolSize < 1) throw new IllegalArgumentException("threadPoolSize must be >= 1");
-    if (queueCapacity  < 1) throw new IllegalArgumentException("queueCapacity must be >= 1");
-    this.port       = port;
+    if (queueCapacity < 1) throw new IllegalArgumentException("queueCapacity must be >= 1");
+    this.port = port;
+    this.pushPort = port + 1;
     this.threadPool = new ThreadPool(threadPoolSize, queueCapacity);
-    this.router     = router; // may be null — resolved in start()
+    this.router = router; // may be null — resolved in start()
+    this.pushRegistry = pushRegistry;
+  }
+
+  public synchronized void setPushRegistry(PushRegistry pushRegistry) {
+    this.pushRegistry = pushRegistry;
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -79,19 +105,26 @@ public class SyosServer {
       ServerApplicationContext ctx = ServerApplicationContext.getInstance();
       ctx.initialize();
       router = ctx.getRequestRouter();
+      setPushRegistry(ctx.getPushRegistry());
+    }
+    if (pushRegistry == null) {
+      setPushRegistry(PushRegistry.getInstance());
     }
 
     running = true;
-    LOGGER.info("SYOS Server starting on port " + port
+    LOGGER.info("SYOS Server starting on request port " + port + " and push port " + pushPort
         + " with " + threadPool.getPoolSize() + " threads...");
 
-    try (ServerSocket socket = new ServerSocket(port)) {
-      this.serverSocket = socket;
-      LOGGER.info("SYOS Server listening on port " + port);
+    try (ServerSocket requestSocket = new ServerSocket(port);
+        ServerSocket pushSocket = new ServerSocket(pushPort)) {
+      this.serverSocket = requestSocket;
+      this.pushServerSocket = pushSocket;
+      LOGGER.info("SYOS Server listening on request port " + port + " and push port " + pushPort);
+      startPushAcceptLoop();
 
       while (running) {
         try {
-          Socket clientSocket = socket.accept();
+          Socket clientSocket = requestSocket.accept();
           String cid = allocateClientId();
           incrementConnectedClients();
           threadPool.submit(wrap(new ClientHandler(clientSocket, router, cid), cid));
@@ -117,6 +150,13 @@ public class SyosServer {
         serverSocket.close();
       } catch (IOException e) {
         LOGGER.log(Level.WARNING, "Error closing server socket", e);
+      }
+    }
+    if (pushServerSocket != null && !pushServerSocket.isClosed()) {
+      try {
+        pushServerSocket.close();
+      } catch (IOException e) {
+        LOGGER.log(Level.WARNING, "Error closing push server socket", e);
       }
     }
     threadPool.shutdown();
@@ -156,5 +196,24 @@ public class SyosServer {
             + getConnectedClientCount());
       }
     };
+  }
+
+  private void startPushAcceptLoop() {
+    pushAcceptThread = new Thread(() -> {
+      while (running) {
+        try {
+          Socket pushClientSocket = pushServerSocket.accept();
+          PushClientHandler pushHandler = new PushClientHandler(pushClientSocket, pushRegistry);
+          pushRegistry.register(pushHandler);
+          pushHandler.start();
+        } catch (IOException e) {
+          if (running) {
+            LOGGER.log(Level.WARNING, "Error accepting push connection", e);
+          }
+        }
+      }
+    }, "syos-push-accept");
+    pushAcceptThread.setDaemon(true);
+    pushAcceptThread.start();
   }
 }

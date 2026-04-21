@@ -28,7 +28,6 @@ import javax.swing.BoxLayout;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerDateModel;
 import javax.swing.SwingConstants;
@@ -74,6 +73,8 @@ public class ReportsPanel extends JPanel {
 
   private JLabel activeBtn   = null;
   private String activeReport = null;
+  private String activeReportKey;
+  private LocalDate activeReportDate;
 
   // Holds the last result for CSV export
   private List<Map<String, Object>> lastData  = null;
@@ -207,7 +208,9 @@ public class ReportsPanel extends JPanel {
   private void generateReport() {
     if (activeReport == null) { showMsg("Select a report from the left panel.", false); return; }
 
-    String date = getSelectedDate();
+    activeReportKey = activeReport;
+    activeReportDate = LocalDate.parse(getSelectedDate());
+    String date = activeReportDate.toString();
     Request req = buildRequest(activeReport, date);
     if (req == null) { showMsg("Unknown report type.", false); return; }
 
@@ -235,6 +238,20 @@ public class ReportsPanel extends JPanel {
         }
       }
     }.execute();
+  }
+
+  /** Refreshes the currently active report using the last selected report key and date. */
+  public void refreshCurrentReport() {
+    if (activeReportKey == null) {
+      return;
+    }
+    activeReport = activeReportKey;
+    if (activeReportDate != null) {
+      Date dateValue = Date.from(
+          activeReportDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+      dateSpin.setValue(dateValue);
+    }
+    generateReport();
   }
 
   private void displayReport(ReportDto dto) {

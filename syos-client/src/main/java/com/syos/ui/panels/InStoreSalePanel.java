@@ -14,9 +14,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -342,5 +339,11 @@ public class InStoreSalePanel extends JPanel {
   private void showMessage(String msg) {
     messageLabel.setForeground(UiTheme.TEXT_SECONDARY);
     messageLabel.setText(msg);
+  }
+
+  /** Invalidates the item catalogue cache so fresh data is fetched on next use. */
+  public void invalidateCache() {
+    cacheLoaded = false;
+    itemCache.clear();
   }
 }

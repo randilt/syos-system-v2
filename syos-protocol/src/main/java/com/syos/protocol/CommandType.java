@@ -58,6 +58,14 @@ public enum CommandType {
   /** Current ONLINE stock levels. */
   GET_ONLINE_STOCK_REPORT,
 
+  // ── Push channel ────────────────────────────────────────────────────────
+
+  /** Subscribe the current TCP connection as a server-push channel. */
+  SUBSCRIBE_PUSH,
+
+  /** Server-initiated push notification marker (never sent by clients). */
+  PUSH_NOTIFICATION,
+
   // ── Utility ──────────────────────────────────────────────────────────────
 
   /** Health-check; server responds with pong. */
