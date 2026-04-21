@@ -1,14 +1,15 @@
 package com.syos.testclient;
 
 /**
- * Runs both concurrent test clients sequentially against a live SYOS server and prints
+ * Runs four concurrent test clients sequentially against a live SYOS server and prints
  * a combined summary at the end.
  *
  * <p>Execution order:
  * <ol>
- *   <li>{@link ConcurrentInStoreSaleClient} — hammers the server with concurrent in-store sales.</li>
- *   <li>{@link ConcurrentOnlineSaleClient}  — registers a test user then hammers the server with
- *       concurrent online sales.</li>
+ *   <li>{@link ConcurrentInStoreSaleClient} — concurrent in-store sales.</li>
+ *   <li>{@link ConcurrentOnlineSaleClient}  — concurrent online sales (with user registration).</li>
+ *   <li>{@link MixedLoadTestClient}         — mixed in-store and online sales fired simultaneously.</li>
+ *   <li>{@link StressTestClient}            — 100 concurrent PING requests for latency/throughput analysis.</li>
  * </ol>
  *
  * <h2>Usage</h2>
@@ -43,9 +44,7 @@ public class TestClientRunner {
         new ConcurrentInStoreSaleClient(host, port, threads, "APPLE001", 2);
     inStoreClient.run();
 
-    System.out.println();
-    System.out.println("─".repeat(50));
-    System.out.println();
+    stabilizationPause();
 
     // ── Phase 2: Online Sales ─────────────────────────────────────────────
 
@@ -54,6 +53,24 @@ public class TestClientRunner {
         new ConcurrentOnlineSaleClient(host, port, threads, "MILK001", 1);
     onlineClient.run();
 
+    stabilizationPause();
+
+    // ── Phase 3: Mixed Load ───────────────────────────────────────────────
+
+    printPhaseHeader(3, "Mixed In-Store and Online Load Test");
+    MixedLoadTestClient mixedClient =
+        new MixedLoadTestClient(host, port, 10, "APPLE001", 1, "MILK001", 1);
+    mixedClient.run();
+
+    stabilizationPause();
+
+    // ── Phase 4: Stress Test ──────────────────────────────────────────────
+
+    printPhaseHeader(4, "Stress Test (100x PING)");
+    StressTestClient stressClient =
+        new StressTestClient(host, port, 100);
+    stressClient.run();
+
     // ── Combined summary ──────────────────────────────────────────────────
 
     System.out.println();
@@ -61,19 +78,43 @@ public class TestClientRunner {
     System.out.println("║             COMBINED TEST SUMMARY            ║");
     System.out.println("╠══════════════════════════════════════════════╣");
 
-    int totalSuccess = inStoreClient.successCount + onlineClient.successCount;
-    int totalFailure = inStoreClient.failureCount + onlineClient.failureCount;
-    int totalRequests = totalSuccess + totalFailure;
+    int inStoreSuccess = inStoreClient.successCount;
+    int inStoreFailure = inStoreClient.failureCount;
+    int onlineSuccess  = onlineClient.successCount;
+    int onlineFailure  = onlineClient.failureCount;
+    int mixedInStoreSuccess = getMixedInStoreSuccess(mixedClient);
+    int mixedInStoreFailure = getMixedInStoreFailure(mixedClient);
+    int mixedOnlineSuccess  = getMixedOnlineSuccess(mixedClient);
+    int mixedOnlineFailure  = getMixedOnlineFailure(mixedClient);
+    int stressSuccess = stressClient.successCount;
+    int stressFailure = stressClient.failureCount;
 
-    System.out.printf("║  In-Store  Success : %-23d ║%n", inStoreClient.successCount);
-    System.out.printf("║  In-Store  Failure : %-23d ║%n", inStoreClient.failureCount);
-    System.out.printf("║  Online    Success : %-23d ║%n", onlineClient.successCount);
-    System.out.printf("║  Online    Failure : %-23d ║%n", onlineClient.failureCount);
+    int totalRequests = inStoreSuccess + inStoreFailure + onlineSuccess + onlineFailure
+                      + mixedInStoreSuccess + mixedInStoreFailure
+                      + mixedOnlineSuccess + mixedOnlineFailure
+                      + stressSuccess + stressFailure;
+    int totalSuccess = inStoreSuccess + onlineSuccess
+                     + mixedInStoreSuccess + mixedOnlineSuccess
+                     + stressSuccess;
+    int totalFailure = inStoreFailure + onlineFailure
+                     + mixedInStoreFailure + mixedOnlineFailure
+                     + stressFailure;
+
+    System.out.printf("║  In-Store    Success : %-19d ║%n", inStoreSuccess);
+    System.out.printf("║  In-Store    Failure : %-19d ║%n", inStoreFailure);
+    System.out.printf("║  Online      Success : %-19d ║%n", onlineSuccess);
+    System.out.printf("║  Online      Failure : %-19d ║%n", onlineFailure);
+    System.out.printf("║  Mixed I/S   Success : %-19d ║%n", mixedInStoreSuccess);
+    System.out.printf("║  Mixed I/S   Failure : %-19d ║%n", mixedInStoreFailure);
+    System.out.printf("║  Mixed Onl   Success : %-19d ║%n", mixedOnlineSuccess);
+    System.out.printf("║  Mixed Onl   Failure : %-19d ║%n", mixedOnlineFailure);
+    System.out.printf("║  Stress Test Success : %-19d ║%n", stressSuccess);
+    System.out.printf("║  Stress Test Failure : %-19d ║%n", stressFailure);
     System.out.println("╠══════════════════════════════════════════════╣");
-    System.out.printf("║  TOTAL Requests    : %-23d ║%n", totalRequests);
-    System.out.printf("║  TOTAL Successes   : %-23d ║%n", totalSuccess);
-    System.out.printf("║  TOTAL Failures    : %-23d ║%n", totalFailure);
-    System.out.printf("║  Overall Success   : %-22.1f%% ║%n",
+    System.out.printf("║  TOTAL Requests      : %-19d ║%n", totalRequests);
+    System.out.printf("║  TOTAL Successes     : %-19d ║%n", totalSuccess);
+    System.out.printf("║  TOTAL Failures      : %-19d ║%n", totalFailure);
+    System.out.printf("║  Overall Success     : %-18.1f%% ║%n",
         totalRequests == 0 ? 0.0 : (100.0 * totalSuccess / totalRequests));
     System.out.println("╚══════════════════════════════════════════════╝");
     System.out.println();
@@ -88,7 +129,7 @@ public class TestClientRunner {
     System.out.println("╠══════════════════════════════════════════════╣");
     System.out.printf( "║  Server    : %-31s ║%n", host + ":" + port);
     System.out.printf( "║  Threads   : %-31d ║%n", threads);
-    System.out.printf( "║  Phases    : %-31s ║%n", "In-Store Sales + Online Sales");
+    System.out.printf( "║  Phases    : %-31s ║%n", "4 (In-Store, Online, Mixed, Stress)");
     System.out.println("╚══════════════════════════════════════════════╝");
     System.out.println();
   }
@@ -96,5 +137,53 @@ public class TestClientRunner {
   private static void printPhaseHeader(int phase, String title) {
     System.out.printf("▶  Phase %d: %s%n", phase, title);
     System.out.println();
+  }
+
+  private static void stabilizationPause() {
+    System.out.println();
+    System.out.println("─".repeat(50));
+    System.out.println("Stabilizing server (1s pause)...");
+    try {
+      Thread.sleep(1_000);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    System.out.println();
+  }
+
+  /**
+   * Reflection-based helper to access inStoreSuccess field from MixedLoadTestClient.
+   * (Avoids making the field public in MixedLoadTestClient.)
+   */
+  private static int getMixedInStoreSuccess(MixedLoadTestClient client) {
+    try {
+      return (int) client.getClass().getDeclaredField("inStoreSuccess").get(client);
+    } catch (Exception e) {
+      return 0;
+    }
+  }
+
+  private static int getMixedInStoreFailure(MixedLoadTestClient client) {
+    try {
+      return (int) client.getClass().getDeclaredField("inStoreFailure").get(client);
+    } catch (Exception e) {
+      return 0;
+    }
+  }
+
+  private static int getMixedOnlineSuccess(MixedLoadTestClient client) {
+    try {
+      return (int) client.getClass().getDeclaredField("onlineSuccess").get(client);
+    } catch (Exception e) {
+      return 0;
+    }
+  }
+
+  private static int getMixedOnlineFailure(MixedLoadTestClient client) {
+    try {
+      return (int) client.getClass().getDeclaredField("onlineFailure").get(client);
+    } catch (Exception e) {
+      return 0;
+    }
   }
 }
