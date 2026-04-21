@@ -215,4 +215,69 @@ class ConcurrencyIntegrationTest {
     assertEquals(0, onlineStockRepository.getTotalStock(itemCode));
     assertEquals(5, storeStockRepository.getTotalStock(itemCode));
   }
+
+  @Test
+  void shouldNotOversellShelfStock_WhenConcurrentInStoreSales() throws InterruptedException {
+    ItemCode itemCode = ItemCode.of("APPLE001");
+    itemRepository.save(new Item(itemCode, "Red Apples", Money.of(2.50)));
+
+    // Set up 20 units in STORE so all 20 threads pass the store availability check
+    AddStock storeStock = new AddStock(storeStockRepository);
+    storeStock.execute(itemCode, today, today.plusDays(7), 20);
+    // Move 10 to SHELF so only 10 can be sold (first 10 threads succeed, next 10 fail)
+    stockManager.moveToShelf(itemCode, 10, today);
+
+    int threadCount = 20;
+    Thread[] threads = new Thread[threadCount];
+    int[] successCount = {0};
+    int[] failureCount = {0};
+    RuntimeException[] lastException = {null};
+
+    Object barrier = new Object();
+    int[] readyCount = {0};
+
+    for (int i = 0; i < threadCount; i++) {
+      threads[i] =
+          new Thread(
+              () -> {
+                synchronized (barrier) {
+                  readyCount[0]++;
+                  while (readyCount[0] < threadCount) {
+                    try {
+                      barrier.wait();
+                    } catch (InterruptedException e) {
+                      Thread.currentThread().interrupt();
+                      return;
+                    }
+                  }
+                  barrier.notifyAll();
+                }
+
+                try {
+                  Map<ItemCode, Integer> items = new HashMap<>();
+                  items.put(itemCode, 1);
+                  Bill bill = processInStoreSale.execute(items, Money.of(10.0), today);
+                  assertEquals(TransactionType.IN_STORE, bill.getType());
+                  synchronized (successCount) {
+                    successCount[0]++;
+                  }
+                } catch (RuntimeException ex) {
+                  synchronized (failureCount) {
+                    failureCount[0]++;
+                    lastException[0] = ex;
+                  }
+                }
+              });
+      threads[i].start();
+    }
+
+    for (Thread t : threads) {
+      t.join();
+    }
+
+    assertEquals(10, successCount[0], "Expected 10 successful sales. Last exception: " + (lastException[0] != null ? lastException[0].getMessage() : "none"));
+    assertEquals(10, failureCount[0]);
+    assertEquals(0, shelfStockRepository.getTotalStock(itemCode));
+    assertEquals(10, storeStockRepository.getTotalStock(itemCode));
+  }
 }

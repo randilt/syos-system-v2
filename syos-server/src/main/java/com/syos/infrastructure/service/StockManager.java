@@ -31,9 +31,14 @@ public class StockManager {
     this.selectionStrategy = selectionStrategy;
   }
 
-  /** Moves quantity from store stock to shelf stock. */
-
-  public synchronized void moveToShelf(ItemCode itemCode, int quantity, LocalDate currentDate) {
+  /**
+   * Moves quantity from store stock to shelf stock. Thread safety is delegated to the database
+   * layer via FOR UPDATE row locking when called within a JdbcTransactionManager transaction.
+   * The synchronized keyword is intentionally absent to prevent monitor-DB-lock inversion
+   * deadlock, which would occur if a thread holds a DB transaction lock while waiting for a
+   * synchronized method lock held by another thread that itself needs a DB lock.
+   */
+  public void moveToShelf(ItemCode itemCode, int quantity, LocalDate currentDate) {
     if (itemCode == null) throw new IllegalArgumentException("Item code cannot be null");
     if (quantity <= 0) throw new IllegalArgumentException("Quantity must be positive");
 
@@ -68,9 +73,14 @@ public class StockManager {
     }
   }
 
-  /** ReduceShelfStock operation. */
-
-  public synchronized void reduceShelfStock(
+  /**
+   * Reduces shelf stock for an item by the specified quantity. Thread safety is delegated to
+   * the database layer via FOR UPDATE row locking when called within a JdbcTransactionManager
+   * transaction. The synchronized keyword is intentionally absent to prevent monitor-DB-lock
+   * inversion deadlock, which would occur if a thread holds a DB transaction lock while waiting
+   * for a synchronized method lock held by another thread that itself needs a DB lock.
+   */
+  public void reduceShelfStock(
       ItemCode itemCode, int quantity, LocalDate currentDate) {
     if (itemCode == null) throw new IllegalArgumentException("Item code cannot be null");
     if (quantity <= 0) throw new IllegalArgumentException("Quantity must be positive");

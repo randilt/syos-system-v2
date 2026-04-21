@@ -95,20 +95,60 @@ public class JdbcStockBatchRepository implements StockBatchRepository {
   }
 
   @Override
-  /** GetTotalStock operation. */
+  /**
+   * GetTotalStock operation. When called inside a transaction (JdbcTransactionContext has
+   * a connection), this method acquires a row-level lock via FOR UPDATE to prevent concurrent
+   * oversell. Outside a transaction, no lock is used to avoid unnecessary contention.
+   */
   public int getTotalStock(ItemCode itemCode) {
     if (itemCode == null) throw new IllegalArgumentException("Item code cannot be null");
+    Connection connection = JdbcTransactionContext.getConnection();
+    if (connection != null) {
+      return getTotalStockForUpdate(itemCode, connection);
+    } else {
+      String sql =
+          "SELECT COALESCE(SUM(quantity), 0) AS total_quantity FROM stock_batches "
+              + "WHERE item_code = ? AND stock_type = ?";
+      Connection managedConnection = null;
+      try {
+        managedConnection = databaseManager.getConnection();
+        try (PreparedStatement statement = managedConnection.prepareStatement(sql)) {
+          statement.setString(1, itemCode.getValue());
+          statement.setString(2, stockType);
+          try (ResultSet resultSet = statement.executeQuery()) {
+            if (resultSet.next()) {
+              return resultSet.getInt("total_quantity");
+            }
+          }
+        }
+      } catch (SQLException ex) {
+        throw new IllegalStateException("Failed to get total stock", ex);
+      } finally {
+        if (managedConnection != null) {
+          try {
+            managedConnection.close();
+          } catch (SQLException ignored) {
+            // ignore close failures
+          }
+        }
+      }
+      return 0;
+    }
+  }
+
+  /**
+   * Queries total stock with row-level locking (FOR UPDATE). This method is private and only
+   * called from getTotalStock() when inside a transaction.
+   *
+   * @param itemCode the item to query
+   * @param connection the transaction connection (already set in JdbcTransactionContext)
+   * @return total stock quantity for the item
+   */
+  private int getTotalStockForUpdate(ItemCode itemCode, Connection connection) {
     String sql =
         "SELECT COALESCE(SUM(quantity), 0) AS total_quantity FROM stock_batches "
-            + "WHERE item_code = ? AND stock_type = ?";
-    Connection connection = JdbcTransactionContext.getConnection();
-    boolean managedConnection = false;
-
+            + "WHERE item_code = ? AND stock_type = ? FOR UPDATE";
     try {
-      if (connection == null) {
-        connection = databaseManager.getConnection();
-        managedConnection = true;
-      }
       try (PreparedStatement statement = connection.prepareStatement(sql)) {
         statement.setString(1, itemCode.getValue());
         statement.setString(2, stockType);
@@ -119,15 +159,7 @@ public class JdbcStockBatchRepository implements StockBatchRepository {
         }
       }
     } catch (SQLException ex) {
-      throw new IllegalStateException("Failed to get total stock", ex);
-    } finally {
-      if (managedConnection && connection != null) {
-        try {
-          connection.close();
-        } catch (SQLException ignored) {
-          // ignore close failures
-        }
-      }
+      throw new IllegalStateException("Failed to get total stock with lock", ex);
     }
     return 0;
   }
