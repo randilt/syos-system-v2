@@ -32,6 +32,11 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerDateModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
+import java.awt.event.KeyEvent;
+import javax.swing.AbstractAction;
+import javax.swing.KeyStroke;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Report centre panel.
@@ -70,6 +75,7 @@ public class ReportsPanel extends JPanel {
   private final JLabel           countLabel   = new JLabel(" ", SwingConstants.LEFT);
   private final JLabel           msgLabel     = new JLabel(" ", SwingConstants.LEFT);
   private final JPanel           tableHolder  = new JPanel(new BorderLayout());
+  private final JLabel           refreshLabel = new JLabel(" ", SwingConstants.LEFT);
 
   private JLabel activeBtn   = null;
   private String activeReport = null;
@@ -94,6 +100,15 @@ public class ReportsPanel extends JPanel {
 
     add(buildSidebar(),  BorderLayout.WEST);
     add(buildContent(),  BorderLayout.CENTER);
+
+      // Bind F5 key to refresh current report
+      getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+          KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "refresh");
+      getActionMap().put("refresh", new AbstractAction() {
+        @Override public void actionPerformed(java.awt.event.ActionEvent e) {
+          generateReport();
+        }
+      });
   }
 
   // ── Sidebar ───────────────────────────────────────────────────────────────
@@ -176,6 +191,11 @@ public class ReportsPanel extends JPanel {
     StyledButton csvBtn = StyledButton.neutral("Export CSV");
     csvBtn.addActionListener(e -> exportCsv());
     topBar.add(csvBtn);
+      topBar.add(Box.createHorizontalGlue());
+      UiTheme.styleLabel(refreshLabel);
+      refreshLabel.setForeground(UiTheme.TEXT_SECONDARY);
+      refreshLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+      topBar.add(refreshLabel);
     content.add(topBar, BorderLayout.NORTH);
 
     // Centre: title + table + count + message
@@ -283,6 +303,7 @@ public class ReportsPanel extends JPanel {
     tableHolder.repaint();
 
     countLabel.setText("Records: " + dto.getTotalRecords());
+      refreshLabel.setText("Refreshed: " + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
     msgLabel.setText(" ");
   }
 

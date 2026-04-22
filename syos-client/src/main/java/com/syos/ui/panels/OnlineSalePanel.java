@@ -29,6 +29,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 /**
  * Panel for processing online sales.
@@ -65,6 +67,23 @@ public class OnlineSalePanel extends JPanel {
     this.connection = connection;
     this.cartTable  = new StyledTable("Item Code", "Item Name", "Qty", "Unit Price", "Total");
     UiTheme.styleTextFields(userIdField, itemCodeField, qtyField);
+
+    // Add tooltip clear listeners for input fields
+    userIdField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { userIdField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { userIdField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { userIdField.setToolTipText(null); }
+    });
+    itemCodeField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
+    });
+    qtyField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
+    });
 
     setLayout(new BorderLayout(8, 8));
     setBackground(BG);
@@ -311,7 +330,20 @@ public class OnlineSalePanel extends JPanel {
     itemCodeField.requestFocus();
   }
 
-  private void showError(String msg)   { messageLabel.setForeground(ERR_COLOR); messageLabel.setText(msg); }
+  /**
+   * Shows an error message and sets tooltip on relevant field if applicable.
+   */
+  private void showError(String msg) {
+    messageLabel.setForeground(ERR_COLOR);
+    messageLabel.setText(msg);
+    if (msg != null && msg.toLowerCase().contains("user")) {
+      userIdField.setToolTipText(msg);
+    } else if (msg != null && msg.toLowerCase().contains("item")) {
+      itemCodeField.setToolTipText(msg);
+    } else if (msg != null && msg.toLowerCase().contains("quantity")) {
+      qtyField.setToolTipText(msg);
+    }
+  }
   private void showSuccess(String msg) { messageLabel.setForeground(OK_COLOR);  messageLabel.setText(msg); }
   private void showMessage(String msg) {
     messageLabel.setForeground(UiTheme.TEXT_SECONDARY);

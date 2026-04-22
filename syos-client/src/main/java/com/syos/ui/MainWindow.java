@@ -78,10 +78,14 @@ public class MainWindow extends JFrame {
   private ReportsPanel reportsPanel;
 
   private JLabel activeSidebarLabel = null;
+  private JLabel titleLabel;
   private JLabel clockLabel;
   private JLabel connDotLabel;
   private JLabel connTextLabel;
   private JLabel pushStatusLabel;
+  private JLabel lastResponseTimeLabel;
+  private JLabel statusDotLabel;
+  private com.syos.ui.components.StyledButton reconnectBtn;
 
   public MainWindow(String host, int port) {
     super("SYOS Billing System");
@@ -136,6 +140,13 @@ public class MainWindow extends JFrame {
     connDotLabel.repaint();
     connTextLabel.setText(text);
     connTextLabel.setForeground(connected ? DOT_OK : DOT_ERR);
+    if (reconnectBtn != null) {
+      reconnectBtn.setVisible(!connected);
+    }
+    if (statusDotLabel != null) {
+      statusDotLabel.setText(connected ? "● Connected" : "● Offline");
+      statusDotLabel.setForeground(connected ? DOT_OK : DOT_ERR);
+    }
   }
 
   private void setPushLiveStatus(boolean connected) {
@@ -185,6 +196,7 @@ public class MainWindow extends JFrame {
     root.add(buildTopBar(),  BorderLayout.NORTH);
     root.add(buildSidebar(), BorderLayout.WEST);
     root.add(buildContent(), BorderLayout.CENTER);
+    root.add(buildStatusBar(), BorderLayout.SOUTH);
     setContentPane(root);
   }
 
@@ -194,10 +206,10 @@ public class MainWindow extends JFrame {
     bar.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 16));
     bar.setPreferredSize(new Dimension(0, 48));
 
-    JLabel title = new JLabel("SYOS Billing System");
-    title.setFont(TOPBAR_FONT);
-    title.setForeground(Color.WHITE);
-    bar.add(title, BorderLayout.WEST);
+    titleLabel = new JLabel("SYOS — POS Terminal");
+    titleLabel.setFont(TOPBAR_FONT);
+    titleLabel.setForeground(Color.WHITE);
+    bar.add(titleLabel, BorderLayout.WEST);
 
     // Right side: connection dot + text + spacer + clock
     JPanel right = new JPanel();
@@ -257,6 +269,16 @@ public class MainWindow extends JFrame {
       }
     }
     sidebar.add(Box.createVerticalGlue());
+
+    // Reconnect button (initially hidden, shown when disconnected)
+    reconnectBtn = com.syos.ui.components.StyledButton.primary("Reconnect");
+    reconnectBtn.addActionListener(e -> connectToServer());
+    reconnectBtn.setVisible(false);
+    reconnectBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+    reconnectBtn.setAlignmentX(CENTER_ALIGNMENT);
+    sidebar.add(reconnectBtn);
+    sidebar.add(Box.createVerticalStrut(8));
+
     return sidebar;
   }
 
@@ -283,6 +305,7 @@ public class MainWindow extends JFrame {
         activeSidebarLabel = btn;
         btn.setBackground(SIDEBAR_ACTIVE);
         cardLayout.show(contentArea, cardKey);
+        titleLabel.setText("SYOS — " + text);
       }
     });
     return btn;
@@ -303,5 +326,54 @@ public class MainWindow extends JFrame {
 
     cardLayout.show(contentArea, "POS");
     return contentArea;
+  }
+
+  /**
+   * Builds the status bar panel at the bottom of the window.
+   * Contains mode, last response time, and connection status.
+   */
+  private JPanel buildStatusBar() {
+    JPanel statusBar = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 12, 4));
+    statusBar.setBackground(new Color(0xECF0F1));
+    statusBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UiTheme.FIELD_BORDER));
+    statusBar.setPreferredSize(new Dimension(0, 24));
+
+    JLabel modeLabel = new JLabel("Mode: CASHIER");
+    UiTheme.styleLabel(modeLabel);
+    modeLabel.setForeground(UiTheme.TEXT_SECONDARY);
+    statusBar.add(modeLabel);
+
+    statusBar.add(new JLabel(" | "));
+
+    lastResponseTimeLabel = new JLabel("Last response: —");
+    UiTheme.styleLabel(lastResponseTimeLabel);
+    lastResponseTimeLabel.setForeground(UiTheme.TEXT_SECONDARY);
+    statusBar.add(lastResponseTimeLabel);
+
+    statusBar.add(new JLabel(" | "));
+
+    statusDotLabel = new JLabel("● Connected");
+    UiTheme.styleLabel(statusDotLabel);
+    statusDotLabel.setForeground(DOT_OK);
+    statusBar.add(statusDotLabel);
+
+    return statusBar;
+  }
+
+  /**
+   * Updates the last response time displayed in the status bar.
+   *
+   * @param ms response time in milliseconds
+   */
+  public void setLastResponseTime(long ms) {
+    javax.swing.SwingUtilities.invokeLater(() ->
+        lastResponseTimeLabel.setText(String.format("Last response: %d ms", ms)));
+  }
+
+  /**
+   * Returns a reference to the status bar for external updates.
+   */
+  public JPanel getStatusBar() {
+    return (JPanel) getContentPane().getComponent(3);
   }
 }

@@ -3,6 +3,7 @@ package com.syos.ui.panels;
 import com.syos.network.ServerConnection;
 import com.syos.protocol.Request;
 import com.syos.protocol.Response;
+import com.syos.protocol.ReportDto;
 import com.syos.ui.UiTheme;
 import com.syos.ui.components.StyledButton;
 import java.awt.BorderLayout;
@@ -24,6 +25,8 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.SpinnerDateModel;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.SwingWorker;
 
 /**
@@ -67,6 +70,29 @@ public class StockManagementPanel extends JPanel {
     UiTheme.styleRadioButton(onlineRadio);
     UiTheme.styleLabel(addMsgLabel);
     UiTheme.styleLabel(shelfMsgLabel);
+
+    // Add tooltip clear listeners for Receive Stock tab
+    addCodeField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { addCodeField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { addCodeField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { addCodeField.setToolTipText(null); }
+    });
+    addQtyField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { addQtyField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { addQtyField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { addQtyField.setToolTipText(null); }
+    });
+    // Add tooltip clear listeners for Restock Shelf tab
+    shelfCodeField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { shelfCodeField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { shelfCodeField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { shelfCodeField.setToolTipText(null); }
+    });
+    shelfQtyField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { shelfQtyField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { shelfQtyField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { shelfQtyField.setToolTipText(null); }
+    });
 
     setLayout(new BorderLayout());
     setBackground(BG);
@@ -118,6 +144,11 @@ public class StockManagementPanel extends JPanel {
     addRow(form, gc, 2, "Purchase Date:",        purchaseSpin);
     addRow(form, gc, 3, "Expiry Date:",          expirySpin);
     addRow(form, gc, 4, "Target:",               radioPanel);
+
+    StyledButton checkStockBtn = StyledButton.neutral("Check Stock");
+    checkStockBtn.addActionListener(e -> checkStock());
+    gc.gridx = 0; gc.gridy = 5;
+    form.add(checkStockBtn, gc);
 
     receiveBtn = StyledButton.success("Receive Stock");
     receiveBtn.addActionListener(e -> receiveStock());
@@ -250,6 +281,69 @@ public class StockManagementPanel extends JPanel {
     return null;
   }
 
+  /**
+   * Checks and displays the current stock level for an item across STORE, SHELF, and ONLINE.
+   */
+  private void checkStock() {
+    String code = addCodeField.getText().trim().toUpperCase();
+    if (code.isBlank()) {
+      showAddMsg("Enter an item code to check stock.", false);
+      return;
+    }
+
+    showAddMsg("Checking...", true);
+
+    new SwingWorker<String, Void>() {
+      @Override protected String doInBackground() {
+        String date = LocalDate.now().toString();
+        int storeQty = fetchLocationQty("STORE", code, date);
+        int shelfQty = fetchLocationQty("SHELF", code, date);
+        int onlineQty = fetchLocationQty("ONLINE", code, date);
+        return String.format("STORE: %d | SHELF: %d | ONLINE: %d", storeQty, shelfQty, onlineQty);
+      }
+
+      @Override protected void done() {
+        try {
+          showAddMsg(get(), true);
+        } catch (InterruptedException | ExecutionException ex) {
+          showAddMsg("Error checking stock: " + ex.getMessage(), false);
+        }
+      }
+    }.execute();
+  }
+
+  /**
+   * Fetches stock quantity for one location from a stock report response.
+   */
+  private int fetchLocationQty(String location, String code, String date) {
+    try {
+      Response response = connection.sendRequest(Request.getStockReport(location, date));
+      if (!response.isSuccess() || !(response.getPayload() instanceof ReportDto dto)) {
+        return 0;
+      }
+      for (java.util.Map<String, Object> row : dto.getData()) {
+        Object codeValue = row.get("Item Code") != null ? row.get("Item Code") : row.get("Code");
+        if (codeValue != null && code.equalsIgnoreCase(String.valueOf(codeValue).trim())) {
+          Object qtyValue = row.get("Quantity") != null ? row.get("Quantity") : row.get("Qty");
+          if (qtyValue instanceof Number n) {
+            return n.intValue();
+          }
+          if (qtyValue != null) {
+            try {
+              return Integer.parseInt(String.valueOf(qtyValue).trim());
+            } catch (NumberFormatException ignored) {
+              return 0;
+            }
+          }
+          return 0;
+        }
+      }
+    } catch (Exception ignored) {
+      return 0;
+    }
+    return 0;
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private void clearAddForm() {
@@ -280,10 +374,24 @@ public class StockManagementPanel extends JPanel {
   private void showAddMsg(String msg, boolean ok) {
     addMsgLabel.setForeground(ok ? OK_COLOR : ERR_COLOR);
     addMsgLabel.setText(msg);
+    if (!ok && msg != null) {
+      if (msg.toLowerCase().contains("item")) {
+        addCodeField.setToolTipText(msg);
+      } else if (msg.toLowerCase().contains("quantity")) {
+        addQtyField.setToolTipText(msg);
+      }
+    }
   }
 
   private void showShelfMsg(String msg, boolean ok) {
     shelfMsgLabel.setForeground(ok ? OK_COLOR : ERR_COLOR);
     shelfMsgLabel.setText(msg);
+    if (!ok && msg != null) {
+      if (msg.toLowerCase().contains("item")) {
+        shelfCodeField.setToolTipText(msg);
+      } else if (msg.toLowerCase().contains("quantity")) {
+        shelfQtyField.setToolTipText(msg);
+      }
+    }
   }
 }

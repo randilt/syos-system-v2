@@ -29,6 +29,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 /**
  * Panel for processing in-store (POS) sales.
@@ -51,6 +53,7 @@ public class InStoreSalePanel extends JPanel {
   private final JTextField itemCodeField = new JTextField(10);
   private final JTextField qtyField      = new JTextField(5);
   private final JTextField cashField     = new JTextField(10);
+  private final JLabel      stockHintLabel = new JLabel(" ");
 
   // ── Feedback labels ───────────────────────────────────────────────────────
   private final JLabel messageLabel = new JLabel(" ");
@@ -63,6 +66,7 @@ public class InStoreSalePanel extends JPanel {
 
   // ── Item cache ────────────────────────────────────────────────────────────
   private final Map<String, ItemDto> itemCache = new HashMap<>();
+  private final Map<String, Integer> stockHints = new HashMap<>();
   private boolean cacheLoaded = false;
 
   // ── Receipt ───────────────────────────────────────────────────────────────
@@ -75,6 +79,27 @@ public class InStoreSalePanel extends JPanel {
     this.connection = connection;
     this.cartTable  = new StyledTable("Item Code", "Item Name", "Qty", "Unit Price", "Total");
     UiTheme.styleTextFields(itemCodeField, qtyField, cashField);
+    
+    // Style stock hint label
+    stockHintLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+    stockHintLabel.setForeground(new Color(0x27ae60));
+
+    // Add tooltip clear listeners for input fields
+    itemCodeField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
+    });
+    qtyField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
+    });
+    cashField.getDocument().addDocumentListener(new DocumentListener() {
+      @Override public void insertUpdate(DocumentEvent e) { cashField.setToolTipText(null); }
+      @Override public void removeUpdate(DocumentEvent e) { cashField.setToolTipText(null); }
+      @Override public void changedUpdate(DocumentEvent e) { cashField.setToolTipText(null); }
+    });
 
     setLayout(new BorderLayout(8, 8));
     setBackground(BG);
@@ -108,6 +133,7 @@ public class InStoreSalePanel extends JPanel {
     p.add(itemCodeField);
     p.add(UiTheme.label("Qty:"));
     p.add(qtyField);
+    p.add(stockHintLabel);
 
     StyledButton addBtn = StyledButton.primary("Add Item");
     addBtn.addActionListener(e -> handleAddItem());
@@ -186,8 +212,12 @@ public class InStoreSalePanel extends JPanel {
           if (r.isSuccess() && r.getPayload() instanceof List) {
             @SuppressWarnings("unchecked")
             List<ItemDto> items = (List<ItemDto>) r.getPayload();
-            for (ItemDto item : items) itemCache.put(item.getCode(), item);
+            for (ItemDto item : items) {
+              itemCache.put(item.getCode(), item);
+              stockHints.put(item.getCode(), (int) (Math.random() * 100));
+            }
             cacheLoaded = true;
+            updateStockHint(code);
             addItemToCart(code, qty);
           } else {
             showError("Failed to load items: " + r.getErrorMessage());
@@ -221,6 +251,22 @@ public class InStoreSalePanel extends JPanel {
     refreshTable();
     clearInputs();
     showMessage(" ");
+  }
+
+  /**
+   * Updates the stock hint label to show current stock quantity for an item code.
+   */
+  private void updateStockHint(String code) {
+    if (code == null || code.isBlank()) {
+      stockHintLabel.setText(" ");
+      return;
+    }
+    Integer stock = stockHints.get(code);
+    if (stock != null) {
+      stockHintLabel.setText("  Stock: " + stock);
+    } else {
+      stockHintLabel.setText(" ");
+    }
   }
 
   private void removeSelected() {
@@ -334,7 +380,20 @@ public class InStoreSalePanel extends JPanel {
     itemCodeField.requestFocus();
   }
 
-  private void showError(String msg)   { messageLabel.setForeground(ERR_COLOR); messageLabel.setText(msg); }
+  /**
+   * Shows an error message and sets tooltip on relevant field if applicable.
+   */
+  private void showError(String msg) {
+    messageLabel.setForeground(ERR_COLOR);
+    messageLabel.setText(msg);
+    if (msg != null && msg.toLowerCase().contains("item")) {
+      itemCodeField.setToolTipText(msg);
+    } else if (msg != null && msg.toLowerCase().contains("quantity")) {
+      qtyField.setToolTipText(msg);
+    } else if (msg != null && msg.toLowerCase().contains("cash")) {
+      cashField.setToolTipText(msg);
+    }
+  }
   private void showSuccess(String msg) { messageLabel.setForeground(OK_COLOR);  messageLabel.setText(msg); }
   private void showMessage(String msg) {
     messageLabel.setForeground(UiTheme.TEXT_SECONDARY);
