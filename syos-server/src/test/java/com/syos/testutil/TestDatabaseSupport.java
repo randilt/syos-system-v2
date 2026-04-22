@@ -55,6 +55,15 @@ public final class TestDatabaseSupport {
       statement.execute("TRUNCATE TABLE stock_batches");
       statement.execute("TRUNCATE TABLE users");
       statement.execute("TRUNCATE TABLE items");
+        // Reset sequences to initial values matching V3 migration seed
+        statement.execute(
+          "UPDATE id_sequences SET current_value = 0 WHERE sequence_name = 'BILL_SERIAL'");
+        statement.execute(
+          "UPDATE id_sequences SET current_value = 12 WHERE sequence_name = 'BATCH_ID'");
+        statement.execute(
+          "UPDATE id_sequences SET current_value = 1 WHERE sequence_name = 'USER_ID'");
+        statement.execute(
+          "UPDATE id_sequences SET current_value = 0 WHERE sequence_name = 'TXN_ID'");
       statement.execute("SET FOREIGN_KEY_CHECKS = 1");
     } catch (SQLException ex) {
       throw new IllegalStateException("Failed to reset database", ex);

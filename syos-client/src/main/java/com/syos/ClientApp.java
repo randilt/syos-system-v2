@@ -74,6 +74,14 @@ public class ClientApp {
       catch (NumberFormatException e) {
         LOGGER.warning("Invalid port input, using default " + DEFAULT_PORT);
       }
+      if (p < 1 || p > 65535) {
+        JOptionPane.showMessageDialog(
+            null,
+            "Port must be between 1 and 65535. Using default: " + DEFAULT_PORT,
+            "Invalid Port",
+            JOptionPane.WARNING_MESSAGE);
+        p = DEFAULT_PORT;
+      }
       port = p;
     }
 

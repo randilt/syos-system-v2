@@ -111,6 +111,22 @@ public class ServerConnection {
     return (Response) in.readObject();
   }
 
+  /**
+   * Sends a health-check ping to the server. Returns true if the server responds correctly,
+   * false on any error.
+   */
+  public boolean ping() {
+    if (!isConnected()) {
+      return false;
+    }
+    try {
+      Response response = sendRequest(Request.ping());
+      return response.isSuccess() && "PONG".equals(response.getPayload());
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
   // ── Disconnect ────────────────────────────────────────────────────────────
 
   /** Closes the socket and marks the connection as disconnected. */
