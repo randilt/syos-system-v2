@@ -19,6 +19,7 @@ import com.syos.infrastructure.service.StockManager;
 import com.syos.protocol.BillDto;
 import com.syos.protocol.BillItemDto;
 import com.syos.protocol.ItemDto;
+import com.syos.protocol.PushNotificationDto;
 import com.syos.protocol.ReportDto;
 import com.syos.protocol.Request;
 import com.syos.protocol.Response;
@@ -144,6 +145,11 @@ public class RequestRouter {
 
     AddStock  useCase = "ONLINE".equals(target) ? onlineAddStock : storeAddStock;
     StockBatch batch  = useCase.execute(itemCode, purchaseDate, expiryDate, quantity);
+    PushRegistry.getInstance().broadcast(
+      new PushNotificationDto(
+        "STOCK_UPDATED",
+        "Stock received for " + itemCode.getValue() + " in " + target,
+        System.currentTimeMillis()));
     return Response.success(batchToDto(batch, target));
   }
 
@@ -153,6 +159,11 @@ public class RequestRouter {
     LocalDate date     = LocalDate.parse((String) request.get("date"));
 
     stockManager.moveToShelf(itemCode, quantity, date);
+    PushRegistry.getInstance().broadcast(
+      new PushNotificationDto(
+        "STOCK_UPDATED",
+        "Shelf restocked for " + itemCode.getValue() + " qty " + quantity,
+        System.currentTimeMillis()));
     return Response.success("Shelf restocked successfully");
   }
 
