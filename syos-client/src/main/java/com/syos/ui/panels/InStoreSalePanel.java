@@ -3,6 +3,7 @@ package com.syos.ui.panels;
 import com.syos.network.ServerConnection;
 import com.syos.protocol.BillDto;
 import com.syos.protocol.ItemDto;
+import com.syos.protocol.ReportDto;
 import com.syos.protocol.Request;
 import com.syos.protocol.Response;
 import com.syos.ui.UiTheme;
@@ -46,6 +47,7 @@ public class InStoreSalePanel extends JPanel {
   private static final Color  BG          = UiTheme.PANEL_BG;
   private static final Color  ERR_COLOR   = new Color(0xe74c3c);
   private static final Color  OK_COLOR    = new Color(0x27ae60);
+  private static final Color  STOCK_ERR_COLOR = new Color(0xc0392b);
   private static final Font   TOTAL_FONT  = new Font("Segoe UI", Font.BOLD, 18);
   private final ServerConnection connection;
 
@@ -68,11 +70,13 @@ public class InStoreSalePanel extends JPanel {
   private final Map<String, ItemDto> itemCache = new HashMap<>();
   private final Map<String, Integer> stockHints = new HashMap<>();
   private boolean cacheLoaded = false;
+  private boolean cacheLoading = false;
 
   // ── Receipt ───────────────────────────────────────────────────────────────
   private final BillReceiptPanel receiptPanel = new BillReceiptPanel();
 
   // ── "Process Sale" button ref (for loading state) ─────────────────────────
+  private StyledButton addBtn;
   private StyledButton processBtn;
 
   public InStoreSalePanel(ServerConnection connection) {
@@ -86,14 +90,14 @@ public class InStoreSalePanel extends JPanel {
 
     // Add tooltip clear listeners for input fields
     itemCodeField.getDocument().addDocumentListener(new DocumentListener() {
-      @Override public void insertUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
-      @Override public void removeUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
-      @Override public void changedUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); }
+      @Override public void insertUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); onItemInputChanged(); }
+      @Override public void removeUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); onItemInputChanged(); }
+      @Override public void changedUpdate(DocumentEvent e) { itemCodeField.setToolTipText(null); onItemInputChanged(); }
     });
     qtyField.getDocument().addDocumentListener(new DocumentListener() {
-      @Override public void insertUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
-      @Override public void removeUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
-      @Override public void changedUpdate(DocumentEvent e) { qtyField.setToolTipText(null); }
+      @Override public void insertUpdate(DocumentEvent e) { qtyField.setToolTipText(null); onItemInputChanged(); }
+      @Override public void removeUpdate(DocumentEvent e) { qtyField.setToolTipText(null); onItemInputChanged(); }
+      @Override public void changedUpdate(DocumentEvent e) { qtyField.setToolTipText(null); onItemInputChanged(); }
     });
     cashField.getDocument().addDocumentListener(new DocumentListener() {
       @Override public void insertUpdate(DocumentEvent e) { cashField.setToolTipText(null); }
@@ -125,23 +129,34 @@ public class InStoreSalePanel extends JPanel {
   // ── Layout builders ───────────────────────────────────────────────────────
 
   private JPanel buildInputRow() {
-    JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
+    JPanel p = new JPanel(new BorderLayout(0, 4));
     p.setBackground(BG);
     p.setBorder(UiTheme.titledBorder("Add Item to Cart"));
+    p.setPreferredSize(new Dimension(0, 104));
 
-    p.add(UiTheme.label("Item Code:"));
-    p.add(itemCodeField);
-    p.add(UiTheme.label("Qty:"));
-    p.add(qtyField);
-    p.add(stockHintLabel);
+    JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+    topRow.setBackground(BG);
+    topRow.add(UiTheme.label("Item Code:"));
+    topRow.add(itemCodeField);
+    topRow.add(UiTheme.label("Qty:"));
+    topRow.add(qtyField);
+    topRow.add(stockHintLabel);
 
     StyledButton addBtn = StyledButton.primary("Add Item");
+    addBtn.setPreferredSize(new Dimension(112, 42));
+    this.addBtn = addBtn;
     addBtn.addActionListener(e -> handleAddItem());
-    p.add(addBtn);
+    topRow.add(addBtn);
 
+    JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+    bottomRow.setBackground(BG);
     StyledButton removeBtn = StyledButton.danger("Remove Selected");
+    removeBtn.setPreferredSize(new Dimension(164, 42));
     removeBtn.addActionListener(e -> removeSelected());
-    p.add(removeBtn);
+    bottomRow.add(removeBtn);
+
+    p.add(topRow, BorderLayout.NORTH);
+    p.add(bottomRow, BorderLayout.CENTER);
 
     return p;
   }
@@ -196,12 +211,21 @@ public class InStoreSalePanel extends JPanel {
     if (!cacheLoaded) {
       loadItemCacheThenAdd(code, qty);
     } else {
+      String stockErr = validateAvailableStock(code, qty);
+      if (stockErr != null) { showError(stockErr); return; }
       addItemToCart(code, qty);
     }
   }
 
-  /** Loads the item cache from the server, then adds the item. */
+  /** Loads the item cache and shelf-stock hints from the server, then optionally adds the item. */
   private void loadItemCacheThenAdd(String code, int qty) {
+    if (cacheLoading) {
+      return;
+    }
+    cacheLoading = true;
+    if (addBtn != null) {
+      addBtn.setEnabled(false);
+    }
     new SwingWorker<Response, Void>() {
       @Override protected Response doInBackground() throws Exception {
         return connection.sendRequest(Request.getAllItems());
@@ -214,16 +238,45 @@ public class InStoreSalePanel extends JPanel {
             List<ItemDto> items = (List<ItemDto>) r.getPayload();
             for (ItemDto item : items) {
               itemCache.put(item.getCode(), item);
-              stockHints.put(item.getCode(), (int) (Math.random() * 100));
             }
+
+            Response stockResponse = connection.sendRequest(
+                Request.getStockReport("SHELF", LocalDate.now().toString()));
+            if (stockResponse.isSuccess() && stockResponse.getPayload() instanceof ReportDto stockReport) {
+              stockHints.clear();
+              for (Map<String, Object> row : stockReport.getData()) {
+                Object codeValue = row.get("Item Code") != null
+                    ? row.get("Item Code")
+                    : (row.get("Code") != null ? row.get("Code") : row.get("itemCode"));
+                Object qtyValue = row.get("Quantity") != null
+                    ? row.get("Quantity")
+                    : (row.get("Qty") != null ? row.get("Qty") : row.get("quantity"));
+                if (codeValue != null && qtyValue instanceof Number number) {
+                  stockHints.put(String.valueOf(codeValue).trim().toUpperCase(), number.intValue());
+                }
+              }
+            }
+
             cacheLoaded = true;
             updateStockHint(code);
-            addItemToCart(code, qty);
+            if (qty > 0) {
+              String stockErr = validateAvailableStock(code, qty);
+              if (stockErr != null) {
+                showError(stockErr);
+              } else {
+                addItemToCart(code, qty);
+              }
+            }
           } else {
             showError("Failed to load items: " + r.getErrorMessage());
           }
         } catch (InterruptedException | ExecutionException ex) {
           showError("Server error: " + ex.getMessage());
+        } catch (Exception ex) {
+          showError("Server error: " + ex.getMessage());
+        } finally {
+          cacheLoading = false;
+          updateAddButtonState();
         }
       }
     }.execute();
@@ -259,14 +312,76 @@ public class InStoreSalePanel extends JPanel {
   private void updateStockHint(String code) {
     if (code == null || code.isBlank()) {
       stockHintLabel.setText(" ");
+      stockHintLabel.setForeground(OK_COLOR);
       return;
     }
-    Integer stock = stockHints.get(code);
+    Integer stock = stockHints.get(code.toUpperCase());
+    int requestedQty = parseQty(qtyField.getText().trim());
     if (stock != null) {
+      if (requestedQty > 0 && requestedQty > stock) {
+        stockHintLabel.setForeground(STOCK_ERR_COLOR);
+      } else {
+        stockHintLabel.setForeground(OK_COLOR);
+      }
       stockHintLabel.setText("  Stock: " + stock);
     } else {
-      stockHintLabel.setText(" ");
+      stockHintLabel.setForeground(UiTheme.TEXT_SECONDARY);
+      stockHintLabel.setText("  Stock: N/A");
     }
+  }
+
+  private void onItemInputChanged() {
+    String code = itemCodeField.getText().trim().toUpperCase();
+    if (cacheLoaded) {
+      updateStockHint(code);
+      updateAddButtonState();
+    } else if (!code.isBlank() && !cacheLoading) {
+      stockHintLabel.setForeground(UiTheme.TEXT_SECONDARY);
+      stockHintLabel.setText("  Checking...");
+      loadItemCacheThenAdd(code, -1);
+      updateAddButtonState();
+    }
+  }
+
+  private void updateAddButtonState() {
+    if (addBtn == null) {
+      return;
+    }
+    if (cacheLoading) {
+      addBtn.setEnabled(false);
+      return;
+    }
+    String code = itemCodeField.getText().trim().toUpperCase();
+    String qtyText = qtyField.getText().trim();
+    if (validateItemInput(code, qtyText) != null) {
+      addBtn.setEnabled(false);
+      return;
+    }
+    int qty = parseQty(qtyText);
+    if (!cacheLoaded || qty <= 0) {
+      addBtn.setEnabled(false);
+      return;
+    }
+    addBtn.setEnabled(validateAvailableStock(code, qty) == null);
+  }
+
+  private int parseQty(String qtyText) {
+    try {
+      return Integer.parseInt(qtyText);
+    } catch (NumberFormatException ignored) {
+      return -1;
+    }
+  }
+
+  private String validateAvailableStock(String code, int qty) {
+    Integer stock = stockHints.get(code.toUpperCase());
+    if (stock == null) {
+      return "Stock is unavailable for item: " + code;
+    }
+    if (qty > stock) {
+      return "Quantity exceeds available stock (Available: " + stock + ").";
+    }
+    return null;
   }
 
   private void removeSelected() {
@@ -403,6 +518,10 @@ public class InStoreSalePanel extends JPanel {
   /** Invalidates the item catalogue cache so fresh data is fetched on next use. */
   public void invalidateCache() {
     cacheLoaded = false;
+    cacheLoading = false;
     itemCache.clear();
+    stockHints.clear();
+    stockHintLabel.setText(" ");
+    updateAddButtonState();
   }
 }
