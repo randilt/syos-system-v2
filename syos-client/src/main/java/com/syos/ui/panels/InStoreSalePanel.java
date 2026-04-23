@@ -129,12 +129,12 @@ public class InStoreSalePanel extends JPanel {
   // ── Layout builders ───────────────────────────────────────────────────────
 
   private JPanel buildInputRow() {
-    JPanel p = new JPanel(new BorderLayout(0, 4));
+    JPanel p = new JPanel(new BorderLayout(0, 6));
     p.setBackground(BG);
     p.setBorder(UiTheme.titledBorder("Add Item to Cart"));
-    p.setPreferredSize(new Dimension(0, 104));
+    p.setPreferredSize(new Dimension(0, 132));
 
-    JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+    JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
     topRow.setBackground(BG);
     topRow.add(UiTheme.label("Item Code:"));
     topRow.add(itemCodeField);
@@ -143,20 +143,22 @@ public class InStoreSalePanel extends JPanel {
     topRow.add(stockHintLabel);
 
     StyledButton addBtn = StyledButton.primary("Add Item");
-    addBtn.setPreferredSize(new Dimension(112, 42));
+    addBtn.setPreferredSize(new Dimension(136, 44));
+    addBtn.setMinimumSize(new Dimension(136, 44));
     this.addBtn = addBtn;
     addBtn.addActionListener(e -> handleAddItem());
     topRow.add(addBtn);
 
-    JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+    JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
     bottomRow.setBackground(BG);
     StyledButton removeBtn = StyledButton.danger("Remove Selected");
-    removeBtn.setPreferredSize(new Dimension(164, 42));
+    removeBtn.setPreferredSize(new Dimension(196, 44));
+    removeBtn.setMinimumSize(new Dimension(196, 44));
     removeBtn.addActionListener(e -> removeSelected());
     bottomRow.add(removeBtn);
 
     p.add(topRow, BorderLayout.NORTH);
-    p.add(bottomRow, BorderLayout.CENTER);
+    p.add(bottomRow, BorderLayout.SOUTH);
 
     return p;
   }
