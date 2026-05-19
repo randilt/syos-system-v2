@@ -82,10 +82,10 @@ public class TestClientRunner {
     int inStoreFailure = inStoreClient.failureCount;
     int onlineSuccess  = onlineClient.successCount;
     int onlineFailure  = onlineClient.failureCount;
-    int mixedInStoreSuccess = getMixedInStoreSuccess(mixedClient);
-    int mixedInStoreFailure = getMixedInStoreFailure(mixedClient);
-    int mixedOnlineSuccess  = getMixedOnlineSuccess(mixedClient);
-    int mixedOnlineFailure  = getMixedOnlineFailure(mixedClient);
+    int mixedInStoreSuccess = mixedClient.getInStoreSuccess();
+    int mixedInStoreFailure = mixedClient.getInStoreFailure();
+    int mixedOnlineSuccess  = mixedClient.getOnlineSuccess();
+    int mixedOnlineFailure  = mixedClient.getOnlineFailure();
     int stressSuccess = stressClient.successCount;
     int stressFailure = stressClient.failureCount;
 
@@ -151,39 +151,4 @@ public class TestClientRunner {
     System.out.println();
   }
 
-  /**
-   * Reflection-based helper to access inStoreSuccess field from MixedLoadTestClient.
-   * (Avoids making the field public in MixedLoadTestClient.)
-   */
-  private static int getMixedInStoreSuccess(MixedLoadTestClient client) {
-    try {
-      return (int) client.getClass().getDeclaredField("inStoreSuccess").get(client);
-    } catch (Exception e) {
-      return 0;
-    }
-  }
-
-  private static int getMixedInStoreFailure(MixedLoadTestClient client) {
-    try {
-      return (int) client.getClass().getDeclaredField("inStoreFailure").get(client);
-    } catch (Exception e) {
-      return 0;
-    }
-  }
-
-  private static int getMixedOnlineSuccess(MixedLoadTestClient client) {
-    try {
-      return (int) client.getClass().getDeclaredField("onlineSuccess").get(client);
-    } catch (Exception e) {
-      return 0;
-    }
-  }
-
-  private static int getMixedOnlineFailure(MixedLoadTestClient client) {
-    try {
-      return (int) client.getClass().getDeclaredField("onlineFailure").get(client);
-    } catch (Exception e) {
-      return 0;
-    }
-  }
 }

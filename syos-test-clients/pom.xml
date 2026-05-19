@@ -14,6 +14,10 @@
   <name>SYOS Test Clients</name>
   <description>Standalone concurrent test clients for stress-testing the server</description>
 
+  <properties>
+    <exec.mainClass>com.syos.testclient.TestClientRunner</exec.mainClass>
+  </properties>
+
   <dependencies>
     <!-- Protocol: Request/Response/DTOs -->
     <dependency>
@@ -33,7 +37,7 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <configuration>
-          <mainClass>com.syos.testclient.ConcurrentInStoreSaleClient</mainClass>
+          <mainClass>${exec.mainClass}</mainClass>
         </configuration>
       </plugin>
     </plugins>

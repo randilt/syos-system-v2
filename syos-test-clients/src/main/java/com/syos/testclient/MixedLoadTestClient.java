@@ -304,6 +304,12 @@ public class MixedLoadTestClient extends BaseTestClient {
     System.out.println("╚══════════════════════════════════════╝");
   }
 
+  // Exposed for TestClientRunner combined summary.
+  public int getInStoreSuccess() { return inStoreSuccess; }
+  public int getInStoreFailure() { return inStoreFailure; }
+  public int getOnlineSuccess()  { return onlineSuccess; }
+  public int getOnlineFailure()  { return onlineFailure; }
+
   // ── main ─────────────────────────────────────────────────────────────────
 
   public static void main(String[] args) throws Exception {
